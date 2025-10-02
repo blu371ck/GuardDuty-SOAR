@@ -1,27 +1,56 @@
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def guardduty_finding_detail():
     """
-    Provides the 'detail' part of a GuardDuty event, which is what
-    the Engine class expects.
+    Provides just the 'detail' part of a GuardDuty event.
+    Keys are capitalized to match the real AWS event structure.
     """
     return {
-        "SchemaVersion": "2.0",
-        "AccountId": "1234567891234",
-        "Id": "cdf9ae8187744b15aeaf17c7ef2f8a52",
-        "Type": "UnauthorizedAccess:EC2/TorClient",
-        "Description": "EC2 instance is communicating with a Tor entry node.",
-        "Severity": 8,
+        "schemaVersion": "2.0",
+        "accountId": "1234567891234",
+        "region": "us-east-1",
+        "partition": "aws",
+        "Id": "cdf9ae8187744b15aeaf17c7ef2f8a52",  # Corrected: Uppercase 'I'
+        "Arn": "arn:aws:guardduty:us-east-1:1234567891234:detector/12cc51e1c99e833adf5924c71ac591b2/finding/cdf9ae8187744b15aeaf17c7ef2f8a52",
+        "Type": "UnauthorizedAccess:EC2/TorClient",  # Corrected: Uppercase 'T'
+        "Resource": {
+            "ResourceType": "Instance",
+            "InstanceDetails": {
+                "InstanceId": "i-99999999",
+                "InstanceType": "t2.micro",
+                "ImageId": "ami-99999999",
+            },
+        },
+        "Service": {
+            "ServiceName": "guardduty",
+            "Action": {
+                "ActionType": "NETWORK_CONNECTION",
+                "NetworkConnectionAction": {
+                    "ConnectionDirection": "OUTBOUND",
+                    "Blocked": False,
+                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.0"},
+                },
+            },
+            "Archived": False,
+            "EventFirstSeen": "2025-08-22T01:40:10.000Z",
+            "EventLastSeen": "2025-10-01T14:38:47.000Z",
+            "Count": 2,
+        },
+        "Severity": 8.0,
+        "CreatedAt": "2025-08-22T01:40:10.005Z",
+        "UpdatedAt": "2025-10-01T14:38:47.919Z",
+        "Title": "EC2 instance is communicating with a Tor entry node.",
+        "Description": "The EC2 instance i-99999999 is communicating with an IP address on the Tor Anonymizing Proxy network.",
     }
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def valid_guardduty_event(guardduty_finding_detail):
     """
-    Provides a reusable, valid top-level GuardDuty event for tests.
-    It uses the `guardduty_finding_detail` fixture for its 'detail' part.
+    Provides a complete, sample top-level GuardDuty event.
+    This is what the Lambda handler function receives.
     """
     return {
         "version": "0",
