@@ -66,6 +66,11 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
     Returns:
         status: Dict containing status and message.
     """
+    # TODO we need to eventually enable configurations from the end-users. 
+    # As of right now, the playbooks and choices made are simply the AWS
+    # best practices. We will, however, allow end-users to modify the playbooks
+    # steps (for instance skipping destructive actions). As we know that not
+    # all organizations handle every incident with the same steps.
     logger.info("Lambda starting up.")
     try:
         # Instantiate the Engine class to parse the event JSON data.

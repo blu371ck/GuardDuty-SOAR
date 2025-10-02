@@ -21,10 +21,15 @@ class Engine:
     def __init__(self, event: GuardDutyEvent) -> None:
         required_keys = ["Type", "Id", "Description"]
         if not all(key in event for key in required_keys):
+            # TODO We only check for these items, as (so far) these are the only items we
+            # need at this stage will add more as more actions require more and more
+            # of the original event.
             raise ValueError(
                 "Event not complete. Missing one of: 'Type', 'Id', 'Description'."
             )
 
+        # Store the event in 'self', making the pointer accessible to all class
+        # methods.
         self.event = event
         logger.info(
             f"Incoming GuardDuty event with id: '{self.event['Id']}'. Starting processing at: '{datetime.now()}'."
@@ -40,6 +45,10 @@ class Engine:
         try:
             playbook = get_playbook_instance(self.event["Type"])
             playbook.run(self.event)
+        # TODO Currently raising an exception for not having a playbook found.
+        # Will later be adding functionality to allow end-users to pick
+        # and choose which alerts trigger, making it no longer a valid 
+        # exception.
         except ValueError as e:
             logger.critical(
                 f"No playbook registered for finding type: {self.event['Type']}."

@@ -7,7 +7,11 @@ from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
 logger = logging.getLogger(__name__)
 
-
+# To ensure DRY principles, we ensure that we are not recreating a playbook
+# that involves the same steps as another. For instance, these GuardDuty
+# finding types below, are all recommended for initiating a playbook for
+# a compromised EC2 instance. TODO we will eventually provide an Excel file to
+# help show mappings for better alignment with expectations.
 @register_playbook(
     "Backdoor:EC2/C&CActivity.B",
     "Backdoor:EC2/C&CActivity.B!DNS",
@@ -58,6 +62,12 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         logger.info(
             f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['Instanceid']}"
         )
+        
+        # TODO For right now the playbooks are not publicly available. We will be providing
+        # good documentation that highlights everything including potentially destructive
+        # actions like destroying a compromised instance. We will also be providing development
+        # requirements (as testing in your environment is a very-wise choice) as well as permissions
+        # needed for the Lambda function
 
         # Step 1: Tag the instance with special tags.
         tagging_result = self.tag_instance.execute(

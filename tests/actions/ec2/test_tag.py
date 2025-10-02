@@ -15,7 +15,6 @@ def test_tag_instance_action_success(guardduty_finding_detail):
     instance_id = guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"]
 
     # Define the exact parameters the test expects the API call to receive.
-    # CORRECTED: The key should be 'SOAR-Action-Time-UTC' to match the action's code.
     expected_params = {
         "Resources": [instance_id],
         "Tags": [

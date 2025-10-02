@@ -12,4 +12,8 @@ class EC2BasePlaybook(BasePlaybook):
 
     def __init__(self):
         super().__init__()
+        # For each child of the BasePlaybook class we will register all actions 
+        # applicable to all playbooks regarding that type. For instance, this is
+        # going to store all actions applicable to playbooks that are applicable to
+        # EC2 reports/findings.
         self.tag_instance = TagInstanceAction(self.session)

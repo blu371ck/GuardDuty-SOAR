@@ -5,9 +5,6 @@ import pytest
 
 from guardduty_soar.engine import Engine
 
-# This file now tests the core logic of finding and running a playbook.
-
-
 def test_engine_initialization_success(guardduty_finding_detail, caplog):
     """Tests that the Engine class initializes correctly with a valid event."""
     with caplog.at_level(logging.INFO):
@@ -37,7 +34,6 @@ def test_handle_finding_success(guardduty_finding_detail):
         mock_playbook_instance = MagicMock()
         mock_get_playbook.return_value = mock_playbook_instance
 
-        # Call the method we are testing.
         engine.handle_finding()
 
         # Assert that the registry was called with the correct finding type.

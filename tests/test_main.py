@@ -3,10 +3,6 @@ from unittest.mock import MagicMock, patch
 
 from guardduty_soar.main import main
 
-# This test file focuses only on the main handler's responsibility:
-# creating an Engine and calling it.
-
-
 def test_main_handler_success(valid_guardduty_event, caplog):
     """
     Tests the main handler's "happy path".

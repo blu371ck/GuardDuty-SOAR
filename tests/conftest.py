@@ -12,9 +12,9 @@ def guardduty_finding_detail():
         "accountId": "1234567891234",
         "region": "us-east-1",
         "partition": "aws",
-        "Id": "cdf9ae8187744b15aeaf17c7ef2f8a52",  # Corrected: Uppercase 'I'
+        "Id": "cdf9ae8187744b15aeaf17c7ef2f8a52",  
         "Arn": "arn:aws:guardduty:us-east-1:1234567891234:detector/12cc51e1c99e833adf5924c71ac591b2/finding/cdf9ae8187744b15aeaf17c7ef2f8a52",
-        "Type": "UnauthorizedAccess:EC2/TorClient",  # Corrected: Uppercase 'T'
+        "Type": "UnauthorizedAccess:EC2/TorClient",
         "Resource": {
             "ResourceType": "Instance",
             "InstanceDetails": {
