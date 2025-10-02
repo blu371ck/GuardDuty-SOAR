@@ -6,26 +6,40 @@ import os
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from guardduty_soar.engine import Engine
+from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import LambdaEvent, Response
-from guardduty_soar.playbook_registry import get_playbook_instance
 
 
 def load_playbooks():
-    """Dynamically imports all Python files from the 'playbooks' directory."""
-    playbook_dir = "src/guardduty_soar/playbooks"
-    if not os.path.isdir(playbook_dir):
-        # If the directory doesn't exist, just log a warning and return.
-        # This makes the handler more resilient.
+    """
+    Dynamically finds and imports all Python playbook files within the 'playbooks'
+    directory and its subdirectories.
+    """
+    playbook_root = "src/guardduty_soar/playbooks"
+    if not os.path.isdir(playbook_root):
         logger.warning(
-            f"Playbook directory not found at '{playbook_dir}'. No playbooks loaded."
+            f"Playbook directory not found at '{playbook_root}'. No playbooks loaded."
         )
         return
 
-    for filename in os.listdir(playbook_dir):
-        if filename.endswith(".py") and not filename.startswith("__"):
-            # Construct the full module path for importlib
-            module_name = f"guardduty_soar.playbooks.{filename[:-3]}"
-            importlib.import_module(module_name)
+    # os.walk will traverse the directory tree.
+    for root, dirs, files in os.walk(playbook_root):
+        for filename in files:
+            if filename.endswith(".py") and not filename.startswith("__"):
+                # Construct the full module path for importlib
+                # e.g., 'src/guardduty_soar/playbooks/ec2/instance_compromise.py'
+                # becomes 'guardduty_soar.playbooks.ec2.instance_compromise'
+                relative_path = os.path.join(root, filename)
+                module_path = relative_path.replace(os.sep, ".")[:-3]  # a/b.py -> a.b
+                # We need to remove the 'src.' prefix for the import to work correctly
+                # as 'src' is our python path root.
+                import_path = module_path.replace("src.", "")
+
+                try:
+                    importlib.import_module(import_path)
+                except ImportError as e:
+                    logger.error(f"Failed to import playbook module {import_path}: {e}")
+
     logger.info("Playbook modules loaded and registered.")
 
 
@@ -46,7 +60,7 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
     Main Lambda handler function.
 
     Parameters:
-        event: Dict[str, Any] containing the lambda function event data as well as
+        event: LambdaEvent, containing the lambda function event data as well as
             embedded GuardDuty findings.
         context: Lambda's runtime context.
     Returns:
@@ -60,9 +74,13 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
         # Lookup the required playbook based on the GuardDuty event type.
         engine.handle_finding()
 
-        # If no errors have occurred, we simply return a success message to the caller.
+    except PlaybookActionFailedError as e:
+        logger.critical(f"A playbook action failed, halting execution: {e}.")
+        return {"statusCode": 500, "message": f"Internal playbook error: {e}"}
+
     except (ValueError, KeyError) as e:
-        logger.error(f"Failed to process finding: {e}")
+        logger.error(f"Failed to process finding due to bad input: {e}")
         return {"statusCode": 400, "message": str(e)}
 
+    logger.info("Successfully processed GuardDuty finding.")
     return {"statusCode": 200, "message": "GuardDuty finding successfully processed."}

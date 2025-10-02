@@ -1,0 +1,31 @@
+import logging
+from abc import ABC, abstractmethod
+
+import boto3
+
+from guardduty_soar.models import ActionResponse, GuardDutyEvent
+
+logger = logging.getLogger(__name__)
+
+
+class BaseAction(ABC):
+    """
+    Abstract base class for all remediation actions.
+    """
+
+    def __init__(self, boto3_session: boto3.Session):
+        self.session = boto3_session
+
+    @abstractmethod
+    def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
+        """
+        Executes the remediation action.
+
+        Args:
+            event: The full GuardDuty finding detail dictionary.
+            **kwargs: Optional keyword arguments for actions that need extra context.
+
+        Returns:
+            An ActionResponse dictionary containing the status and details of the action.
+        """
+        raise NotImplementedError

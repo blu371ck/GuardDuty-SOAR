@@ -1,6 +1,8 @@
 import logging
 from typing import Callable, Dict, Type
 
+import boto3
+
 from guardduty_soar.models import GuardDutyEvent
 
 logger = logging.getLogger(__name__)
@@ -8,15 +10,16 @@ logger = logging.getLogger(__name__)
 _PLAYBOOK_REGISTRY: Dict[str, Type["BasePlaybook"]] = {}
 
 
-def register_playbook(finding_type: str) -> Callable:
+def register_playbook(*finding_types: str) -> Callable:
     """
     A decorator that registers playbook classes for specific GuardDuty
     finding types.
     """
 
     def decorator(cls: Type["BasePlaybook"]) -> Type["BasePlaybook"]:
-        logger.info(f"Registering playbook for finding: {finding_type}")
-        _PLAYBOOK_REGISTRY[finding_type] = cls
+        for finding_type in finding_types:
+            logger.info(f"Registering playbook for finding: {finding_type}")
+            _PLAYBOOK_REGISTRY[finding_type] = cls
         return cls
 
     return decorator
@@ -39,6 +42,10 @@ class BasePlaybook:
     """
     All playbooks should inherit from this class.
     """
+
+    def __init__(self):
+        # Creates a single session for the playbook.
+        self.session = boto3.Session()
 
     def run(self, event: GuardDutyEvent):
         raise NotImplementedError

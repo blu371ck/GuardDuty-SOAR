@@ -1,4 +1,14 @@
-from typing import Any, Dict, List, TypedDict
+from typing import Any, Dict, List, Literal, TypedDict
+
+
+class ActionResponse(TypedDict):
+    """
+    A standardized dictionary structure for the return value of all Action
+    classes.
+    """
+
+    status: Literal["success", "error"]
+    details: str
 
 
 class Response(TypedDict):
