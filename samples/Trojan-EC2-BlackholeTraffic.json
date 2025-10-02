@@ -1,0 +1,381 @@
+{
+    "version": "0",
+    "id": "28e463cd-ca3b-587f-045e-49903af281e5",
+    "detail-type": "GuardDuty Finding",
+    "source": "aws.guardduty",
+    "account": "1234567891234",
+    "time": "2025-10-01T14:40:03Z",
+    "region": "us-east-1",
+    "resources": [],
+    "detail": {
+        "AccountId": "1234567891234",
+        "Arn": "arn:aws:guardduty:us-east-1:1234567891234:detector/12cc51e1c99e833adf5924c71ac591b2/finding/51d54042fc0a4b0bac64edb01849c01a",
+        "CreatedAt": "2025-08-22T01:40:09.983Z",
+        "Description": "The EC2 instance i-99999999 is communicating with a blackholed IP address 198.51.100.0 on port 80. Compromised IP addresses are often blackholed, and hence communication with such an IP could be an indication of a compromised EC2 instance.",
+        "Id": "51d54042fc0a4b0bac64edb01849c01a",
+        "Partition": "aws",
+        "Region": "us-east-1",
+        "Resource": {
+            "InstanceDetails": {
+                "AvailabilityZone": "generated-az-1a",
+                "IamInstanceProfile": {
+                    "Arn": "arn:aws:iam::1234567891234:instance-profile/generated",
+                    "Id": "GeneratedFindingInstanceProfileId"
+                },
+                "ImageDescription": "GeneratedFindingInstanceImageDescription",
+                "ImageId": "ami-99999999",
+                "InstanceId": "i-99999999",
+                "InstanceState": "running",
+                "InstanceType": "m3.xlarge",
+                "LaunchTime": "2016-08-02T02:05:06.000Z",
+                "NetworkInterfaces": [
+                    {
+                        "Ipv6Addresses": [],
+                        "NetworkInterfaceId": "eni-abcdef00",
+                        "PrivateDnsName": "GeneratedFindingPrivateDnsName1",
+                        "PrivateIpAddress": "10.0.0.1",
+                        "PrivateIpAddresses": [
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName1",
+                                "PrivateIpAddress": "10.0.0.1"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName2",
+                                "PrivateIpAddress": "10.0.0.2"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName3",
+                                "PrivateIpAddress": "10.0.0.3"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName4",
+                                "PrivateIpAddress": "10.0.0.4"
+                            }
+                        ],
+                        "PublicDnsName": "GeneratedFindingPublicDNSName1",
+                        "PublicIp": "198.51.100.1",
+                        "SecurityGroups": [
+                            {
+                                "GroupId": "GeneratedFindingSecurityId1",
+                                "GroupName": "GeneratedFindingSecurityGroupName1"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId2",
+                                "GroupName": "GeneratedFindingSecurityGroupName2"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId3",
+                                "GroupName": "GeneratedFindingSecurityGroupName3"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId4",
+                                "GroupName": "GeneratedFindingSecurityGroupName4"
+                            }
+                        ],
+                        "SubnetId": "GeneratedFindingSubnetId1",
+                        "VpcId": "vpc-generatedvpcid1"
+                    },
+                    {
+                        "Ipv6Addresses": [],
+                        "NetworkInterfaceId": "eni-abcdef01",
+                        "PrivateDnsName": "GeneratedFindingPrivateDnsName2",
+                        "PrivateIpAddress": "10.0.0.2",
+                        "PrivateIpAddresses": [
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName1",
+                                "PrivateIpAddress": "10.0.0.1"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName2",
+                                "PrivateIpAddress": "10.0.0.2"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName3",
+                                "PrivateIpAddress": "10.0.0.3"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName4",
+                                "PrivateIpAddress": "10.0.0.4"
+                            }
+                        ],
+                        "PublicDnsName": "GeneratedFindingPublicDNSName2",
+                        "PublicIp": "198.51.100.2",
+                        "SecurityGroups": [
+                            {
+                                "GroupId": "GeneratedFindingSecurityId1",
+                                "GroupName": "GeneratedFindingSecurityGroupName1"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId2",
+                                "GroupName": "GeneratedFindingSecurityGroupName2"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId3",
+                                "GroupName": "GeneratedFindingSecurityGroupName3"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId4",
+                                "GroupName": "GeneratedFindingSecurityGroupName4"
+                            }
+                        ],
+                        "SubnetId": "GeneratedFindingSubnetId2",
+                        "VpcId": "vpc-generatedvpcid2"
+                    },
+                    {
+                        "Ipv6Addresses": [],
+                        "NetworkInterfaceId": "eni-abcdef02",
+                        "PrivateDnsName": "GeneratedFindingPrivateDnsName3",
+                        "PrivateIpAddress": "10.0.0.3",
+                        "PrivateIpAddresses": [
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName1",
+                                "PrivateIpAddress": "10.0.0.1"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName2",
+                                "PrivateIpAddress": "10.0.0.2"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName3",
+                                "PrivateIpAddress": "10.0.0.3"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName4",
+                                "PrivateIpAddress": "10.0.0.4"
+                            }
+                        ],
+                        "PublicDnsName": "GeneratedFindingPublicDNSName3",
+                        "PublicIp": "198.51.100.3",
+                        "SecurityGroups": [
+                            {
+                                "GroupId": "GeneratedFindingSecurityId1",
+                                "GroupName": "GeneratedFindingSecurityGroupName1"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId2",
+                                "GroupName": "GeneratedFindingSecurityGroupName2"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId3",
+                                "GroupName": "GeneratedFindingSecurityGroupName3"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId4",
+                                "GroupName": "GeneratedFindingSecurityGroupName4"
+                            }
+                        ],
+                        "SubnetId": "GeneratedFindingSubnetId3",
+                        "VpcId": "vpc-generatedvpcid3"
+                    },
+                    {
+                        "Ipv6Addresses": [],
+                        "NetworkInterfaceId": "eni-abcdef03",
+                        "PrivateDnsName": "GeneratedFindingPrivateDnsName4",
+                        "PrivateIpAddress": "10.0.0.4",
+                        "PrivateIpAddresses": [
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName1",
+                                "PrivateIpAddress": "10.0.0.1"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName2",
+                                "PrivateIpAddress": "10.0.0.2"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName3",
+                                "PrivateIpAddress": "10.0.0.3"
+                            },
+                            {
+                                "PrivateDnsName": "GeneratedFindingPrivateName4",
+                                "PrivateIpAddress": "10.0.0.4"
+                            }
+                        ],
+                        "PublicDnsName": "GeneratedFindingPublicDNSName4",
+                        "PublicIp": "198.51.100.4",
+                        "SecurityGroups": [
+                            {
+                                "GroupId": "GeneratedFindingSecurityId1",
+                                "GroupName": "GeneratedFindingSecurityGroupName1"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId2",
+                                "GroupName": "GeneratedFindingSecurityGroupName2"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId3",
+                                "GroupName": "GeneratedFindingSecurityGroupName3"
+                            },
+                            {
+                                "GroupId": "GeneratedFindingSecurityId4",
+                                "GroupName": "GeneratedFindingSecurityGroupName4"
+                            }
+                        ],
+                        "SubnetId": "GeneratedFindingSubnetId4",
+                        "VpcId": "vpc-generatedvpcid4"
+                    }
+                ],
+                "OutpostArn": "arn:aws:outposts:us-west-2:123456789000:outpost/op-0fbc006e9abbc73c3",
+                "ProductCodes": [
+                    {
+                        "Code": "GeneratedFindingProductCodeId1",
+                        "ProductType": "marketplace"
+                    },
+                    {
+                        "Code": "GeneratedFindingProductCodeId2",
+                        "ProductType": "marketplace"
+                    },
+                    {
+                        "Code": "GeneratedFindingProductCodeId3",
+                        "ProductType": "marketplace"
+                    },
+                    {
+                        "Code": "GeneratedFindingProductCodeId4",
+                        "ProductType": "marketplace"
+                    },
+                    {
+                        "Code": "GeneratedFindingProductCodeId5",
+                        "ProductType": "marketplace"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "GeneratedFindingInstanceTag1",
+                        "Value": "GeneratedFindingInstanceValue1"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag2",
+                        "Value": "GeneratedFindingInstanceTagValue2"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag3",
+                        "Value": "GeneratedFindingInstanceTagValue3"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag4",
+                        "Value": "GeneratedFindingInstanceTagValue4"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag5",
+                        "Value": "GeneratedFindingInstanceTagValue5"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag6",
+                        "Value": "GeneratedFindingInstanceTagValue6"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag7",
+                        "Value": "GeneratedFindingInstanceTagValue7"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag8",
+                        "Value": "GeneratedFindingInstanceTagValue8"
+                    },
+                    {
+                        "Key": "GeneratedFindingInstanceTag9",
+                        "Value": "GeneratedFindingInstanceTagValue9"
+                    }
+                ]
+            },
+            "ResourceType": "Instance"
+        },
+        "SchemaVersion": "2.0",
+        "Service": {
+            "Action": {
+                "ActionType": "NETWORK_CONNECTION",
+                "NetworkConnectionAction": {
+                    "Blocked": false,
+                    "ConnectionDirection": "OUTBOUND",
+                    "LocalIpDetails": {
+                        "IpAddressV4": "10.0.0.23",
+                        "IpAddressV6": "1234:5678:90ab:cdef:1234:5678:90ab:cde1"
+                    },
+                    "LocalNetworkInterface": "eni-abcdef00",
+                    "LocalPortDetails": {
+                        "Port": 37617,
+                        "PortName": "Unknown"
+                    },
+                    "Protocol": "TCP",
+                    "RemoteIpDetails": {
+                        "City": {
+                            "CityName": "GeneratedFindingCityName"
+                        },
+                        "Country": {
+                            "CountryName": "GeneratedFindingCountryName"
+                        },
+                        "GeoLocation": {
+                            "Lat": 0,
+                            "Lon": 0
+                        },
+                        "IpAddressV4": "198.51.100.0",
+                        "IpAddressV6": "1234:5678:90ab:cdef:1234:5678:90ab:cde0",
+                        "Organization": {
+                            "Asn": "-1",
+                            "AsnOrg": "GeneratedFindingASNOrg",
+                            "Isp": "GeneratedFindingISP",
+                            "Org": "GeneratedFindingORG"
+                        }
+                    },
+                    "RemotePortDetails": {
+                        "Port": 80,
+                        "PortName": "HTTP"
+                    }
+                }
+            },
+            "AdditionalInfo": {
+                "Type": "default",
+                "Value": "{\"threatListName\":\"GeneratedFindingThreatListName\",\"sample\":true}"
+            },
+            "Archived": false,
+            "Count": 2,
+            "DetectorId": "12cc51e1c99e833adf5924c71ac591b2",
+            "EventFirstSeen": "2025-08-22T01:40:09.000Z",
+            "EventLastSeen": "2025-10-01T18:15:57.000Z",
+            "Evidence": {
+                "ThreatIntelligenceDetails": [
+                    {
+                        "ThreatListName": "GeneratedFindingThreatListName1",
+                        "ThreatNames": [
+                            "GeneratedFindingThreatName1",
+                            "GeneratedFindingThreatName2",
+                            "GeneratedFindingThreatName3",
+                            "GeneratedFindingThreatName4"
+                        ]
+                    },
+                    {
+                        "ThreatListName": "GeneratedFindingThreatListName2",
+                        "ThreatNames": [
+                            "GeneratedFindingThreatName1",
+                            "GeneratedFindingThreatName2",
+                            "GeneratedFindingThreatName3",
+                            "GeneratedFindingThreatName4"
+                        ]
+                    },
+                    {
+                        "ThreatListName": "GeneratedFindingThreatListName3",
+                        "ThreatNames": [
+                            "GeneratedFindingThreatName1",
+                            "GeneratedFindingThreatName2",
+                            "GeneratedFindingThreatName3",
+                            "GeneratedFindingThreatName4"
+                        ]
+                    },
+                    {
+                        "ThreatListName": "GeneratedFindingThreatListName4",
+                        "ThreatNames": [
+                            "GeneratedFindingThreatName1",
+                            "GeneratedFindingThreatName2",
+                            "GeneratedFindingThreatName3",
+                            "GeneratedFindingThreatName4"
+                        ]
+                    }
+                ]
+            },
+            "ResourceRole": "TARGET",
+            "ServiceName": "guardduty"
+        },
+        "Severity": 5,
+        "Title": "The EC2 instance i-99999999 is communicating with a blackholed IP address.",
+        "Type": "Trojan:EC2/BlackholeTraffic",
+        "UpdatedAt": "2025-10-01T18:15:57.850Z"
+    }
+}
