@@ -5,7 +5,7 @@
 ## Getting Started
 
 * [Installation](getting-started/installation.md)
-* [Configuratio](getting-started/configuratio.md)
+* [Configuration](getting-started/configuration.md)
 
 ## Architecture
 
