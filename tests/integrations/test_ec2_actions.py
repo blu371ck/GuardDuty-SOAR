@@ -3,6 +3,7 @@ import time
 import boto3
 import pytest
 
+from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 
 # Mark all tests in this file as 'integration' tests
@@ -13,6 +14,12 @@ pytestmark = pytest.mark.integration
 def ssm_client():
     """Provides an SSM client for the test module."""
     return boto3.client("ssm", region_name="us-east-1")
+
+
+@pytest.fixture(scope="module")
+def ec2_client():
+    """Provides an EC2 client for the test module."""
+    return boto3.client("ec2", region_name="us-east-1")
 
 
 @pytest.fixture(scope="module")
@@ -77,8 +84,29 @@ def temporary_ec2_instance(latest_amazon_linux_ami, testing_subnet_id):
     waiter.wait(InstanceIds=[instance_id])
 
 
+@pytest.fixture(scope="module")
+def quarantine_sg(ec2_client):
+    """
+    Creates a temporary, empty security group to use for quarantine tests.
+    """
+    response = ec2_client.describe_vpcs()
+    vpc_id = response.get("Vpcs", [{}])[0].get("VpcId", "")
+
+    sg = ec2_client.create_security_group(
+        GroupName="gd-soar-quarantine-test",
+        Description="Temporary quarantine SG for integration tests",
+        VpcId=vpc_id,
+    )
+    sg_id = sg["GroupId"]
+    yield sg_id
+
+    # --- Teardown ---
+    ec2_client.delete_security_group(GroupId=sg_id)
+
+
+
 def test_tag_instance_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail
+    temporary_ec2_instance, guardduty_finding_detail, mock_app_config
 ):
     """
     This test runs the TagInstanceAction against a temporary EC2 instance.
@@ -91,7 +119,7 @@ def test_tag_instance_action_integration(
     ] = temporary_ec2_instance
 
     session = boto3.Session(region_name="us-east-1")
-    action = TagInstanceAction(session)
+    action = TagInstanceAction(session, mock_app_config)
 
     result = action.execute(
         guardduty_finding_detail, playbook_name="IntegrationTestPlaybook"
@@ -112,3 +140,29 @@ def test_tag_instance_action_integration(
     assert "SOAR-Status" in tags
     assert tags["SOAR-Status"] == "Remediation-In-Progress"
     assert tags["GUARDDUTY-SOAR-ID"] == guardduty_finding_detail["Id"]
+
+
+def test_isolate_instance_action_integration(
+    temporary_ec2_instance,
+    guardduty_finding_detail,
+    mock_app_config,
+    quarantine_sg,
+    ec2_client,
+):
+    guardduty_finding_detail["Resource"]["InstanceDetails"][
+        "InstanceId"
+    ] = temporary_ec2_instance
+    mock_app_config.quarantine_sg_id = quarantine_sg
+    session = boto3.Session(region_name="us-east-1")
+    action = IsolateInstanceAction(session, mock_app_config)
+    result = action.execute(guardduty_finding_detail)
+
+    assert result["status"] == "success"
+    time.sleep(3)
+
+    response = ec2_client.describe_instances(InstanceIds=[temporary_ec2_instance])
+    instance = response["Reservations"][0]["Instances"][0]
+    attached_sgs = [sg["GroupId"] for sg in instance["SecurityGroups"]]
+
+    assert len(attached_sgs) == 1
+    assert attached_sgs[0] == quarantine_sg

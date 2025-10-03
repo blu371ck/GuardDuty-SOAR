@@ -33,7 +33,9 @@ class IsolateInstanceAction(BaseAction):
             f"ACTION: Isolating instance: {instance_id} with security group: {quarantine_sg_id}."
         )
         try:
-            # TODO implement isolation.
+            self.ec2_client.modify_instance_attribute(
+                InstanceId=instance_id, Groups=[quarantine_sg_id]
+            )
             details = f"Successfully isolated instance: {instance_id}."
             logger.info(details)
             return {"status": "success", "details": details}

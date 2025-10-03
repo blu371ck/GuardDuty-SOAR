@@ -48,8 +48,6 @@ logger = logging.getLogger(__name__)
     "Trojan:EC2/PhishingDomainRequest!DNS",
     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
     "UnauthorizedAccess:EC2/MetadataDNSRebind",
-    "UnauthorizedAccess:EC2/RDPBruteForce",
-    "UnauthorizedAccess:EC2/SSHBruteForce",
     "UnauthorizedAccess:EC2/TorClient",
     "UnauthorizedAccess:EC2/TorRelay",
 )
@@ -86,5 +84,12 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         # the security group should not have any inbound/outbound rules, and
         # all other security groups previously used by the instance are removed.
         isolate_result = self.isolate_instance.execute(event, config=self.config)
+        if isolate_result["status"] == "error":
+            # Isolation failed
+            error_details = isolate_result["details"]
+            logger.error(f"Action 'isolate_instance' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"IsolateInstanceAction failed: {error_details}."
+            )
 
         logger.info(f"Successfully ran playbook on instance:")
