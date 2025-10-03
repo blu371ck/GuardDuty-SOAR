@@ -3,6 +3,7 @@ from datetime import datetime
 
 from guardduty_soar.models import GuardDutyEvent
 from guardduty_soar.playbook_registry import get_playbook_instance
+from guardduty_soar.config import AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class Engine:
         None
     """
 
-    def __init__(self, event: GuardDutyEvent) -> None:
+    def __init__(self, event: GuardDutyEvent, config: AppConfig) -> None:
         required_keys = ["Type", "Id", "Description"]
         if not all(key in event for key in required_keys):
             # TODO We only check for these items, as (so far) these are the only items we
@@ -31,6 +32,10 @@ class Engine:
         # Store the event in 'self', making the pointer accessible to all class
         # methods.
         self.event = event
+        self.config = config
+
+        logger.debug(f"Initialized with config: {self.config}")
+
         logger.info(
             f"Incoming GuardDuty event with id: '{self.event['Id']}'. Starting processing at: '{datetime.now()}'."
         )
@@ -43,7 +48,7 @@ class Engine:
         """
         logger.info(f"Starting lookup for type: '{self.event['Type']}'.")
         try:
-            playbook = get_playbook_instance(self.event["Type"])
+            playbook = get_playbook_instance(self.event["Type"], self.config)
             playbook.run(self.event)
         # TODO Currently raising an exception for not having a playbook found.
         # Will later be adding functionality to allow end-users to pick

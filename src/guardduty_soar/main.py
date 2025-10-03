@@ -4,10 +4,11 @@ import logging
 import os
 
 from aws_lambda_powertools.utilities.typing import LambdaContext
-
+from pathlib import Path
 from guardduty_soar.engine import Engine
 from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import LambdaEvent, Response
+from guardduty_soar.config import get_config
 
 
 def load_playbooks():
@@ -15,39 +16,58 @@ def load_playbooks():
     Dynamically finds and imports all Python playbook files within the 'playbooks'
     directory and its subdirectories.
     """
-    playbook_root = "src/guardduty_soar/playbooks"
-    if not os.path.isdir(playbook_root):
-        logger.warning(
-            f"Playbook directory not found at '{playbook_root}'. No playbooks loaded."
-        )
+    # Start the search from the 'guardduty_soar' package directory
+    package_dir = os.path.dirname(__file__)
+    playbooks_root = os.path.join(package_dir, "playbooks")
+
+    if not os.path.isdir(playbooks_root):
+        logger.critical(f"Playbooks directory not found at '{playbooks_root}'. No playbooks loaded.")
         return
 
-    # os.walk will traverse the directory tree.
-    for root, dirs, files in os.walk(playbook_root):
+    # Walk through the playbooks directory
+    for root, _, files in os.walk(playbooks_root):
         for filename in files:
             if filename.endswith(".py") and not filename.startswith("__"):
-                # Construct the full module path for importlib
-                # e.g., 'src/guardduty_soar/playbooks/ec2/instance_compromise.py'
-                # becomes 'guardduty_soar.playbooks.ec2.instance_compromise'
-                relative_path = os.path.join(root, filename)
-                module_path = relative_path.replace(os.sep, ".")[:-3]  # a/b.py -> a.b
-                # We need to remove the 'src.' prefix for the import to work correctly
-                # as 'src' is our python path root.
-                import_path = module_path.replace("src.", "")
+                # Construct the full absolute Python import path
+                # e.g., /path/to/src/guardduty_soar/playbooks/ec2/instance_compromise.py
+                full_path = os.path.join(root, filename)
+
+                # Make the path relative to the 'src' directory's parent
+                # e.g., guardduty_soar/playbooks/ec2/instance_compromise.py
+                rel_path = os.path.relpath(full_path, os.path.join(package_dir, os.pardir))
+
+                # Convert file path to Python's dot notation
+                # e.g., guardduty_soar.playbooks.ec2.instance_compromise
+                module_name = os.path.splitext(rel_path.replace(os.sep, "."))[0]
 
                 try:
-                    importlib.import_module(import_path)
+                    importlib.import_module(module_name)
                 except ImportError as e:
-                    logger.error(f"Failed to import playbook module {import_path}: {e}")
+                    logger.error(f"Failed to import playbook module {module_name}: {e}.")
 
     logger.info("Playbook modules loaded and registered.")
 
+def setup_logging():
+    """
+    Configures the root logger based on the level specified in gd.cfg.
+    """
+    config = get_config()
+    log_level_str = config.log_level
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+    # Convert the string level (e.g., "INFO") to a logging constant (e.g., logging.INFO)
+    log_level = getattr(logging, log_level_str, logging.INFO)
+
+    # Using force=True to override any default handlers and ensure our format is used.
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True
+    )
+    logging.getLogger("main").info(f"Logging level is set to {log_level_str}.")
+
+# Configure logging as the very first step.
+setup_logging()
 logger = logging.getLogger("main")
 
 # Load playbooks once when the lambda container starts (cold start), speeding up
@@ -66,18 +86,18 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
     Returns:
         status: Dict containing status and message.
     """
-    # TODO we need to eventually enable configurations from the end-users. 
-    # As of right now, the playbooks and choices made are simply the AWS
-    # best practices. We will, however, allow end-users to modify the playbooks
-    # steps (for instance skipping destructive actions). As we know that not
-    # all organizations handle every incident with the same steps.
     logger.info("Lambda starting up.")
+
     try:
+        # Get the singleton config instance we then inject it into
+        # the engine.
+        config = get_config()
+
         # Instantiate the Engine class to parse the event JSON data.
-        engine = Engine(event["detail"])
+        engine = Engine(event["detail"], config)
 
         # Lookup the required playbook based on the GuardDuty event type.
-        engine.handle_finding()
+        #engine.handle_finding()
 
     except PlaybookActionFailedError as e:
         logger.critical(f"A playbook action failed, halting execution: {e}.")
@@ -89,3 +109,10 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
 
     logger.info("Successfully processed GuardDuty finding.")
     return {"statusCode": 200, "message": "GuardDuty finding successfully processed."}
+
+current_script_path = Path(__file__)
+target_directory = current_script_path.parents[2]
+sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
+
+with open(sample_path, 'r', encoding='utf-8') as file:
+    main(json.load(file), {'something': 'something'})
