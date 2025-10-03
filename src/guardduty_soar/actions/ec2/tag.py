@@ -5,6 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.base import BaseAction
+from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
@@ -17,8 +18,8 @@ class TagInstanceAction(BaseAction):
     instance.
     """
 
-    def __init__(self, boto3_session: boto3.Session):
-        super().__init__(boto3_session)
+    def __init__(self, boto3_session: boto3.Session, config: AppConfig):
+        super().__init__(boto3_session, config)
         # We only need to create the specific boto3 client once, for each
         # action. Creating a disposable client.
         self.ec2_client = self.session.client("ec2")

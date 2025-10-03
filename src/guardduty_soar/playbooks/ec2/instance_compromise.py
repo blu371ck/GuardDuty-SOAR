@@ -82,4 +82,9 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
                 f"TagInstanceAction failed: {error_details}."
             )
 
+        # Step 2: Isolate the instance with a quarantined SG. Ideally
+        # the security group should not have any inbound/outbound rules, and
+        # all other security groups previously used by the instance are removed.
+        isolate_result = self.isolate_instance.execute(event, config=self.config)
+
         logger.info(f"Successfully ran playbook on instance:")

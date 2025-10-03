@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import boto3
 
+from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
@@ -13,8 +14,9 @@ class BaseAction(ABC):
     Abstract base class for all remediation actions.
     """
 
-    def __init__(self, boto3_session: boto3.Session):
+    def __init__(self, boto3_session: boto3.Session, config: AppConfig):
         self.session = boto3_session
+        self.config = config
 
     @abstractmethod
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
