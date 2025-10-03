@@ -30,6 +30,14 @@ class AppConfig:
         if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             return "INFO"
         return level
+    
+    @property
+    def boto_log_level(self) -> str:
+        """The log level for the AWS SDK (boto3)."""
+        level = self._config.get("General", "boto_log_level", fallback="WARNING").upper()
+        if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+            return "WARNING"
+        return level
 
     # --- EC2 Section ---
     @property

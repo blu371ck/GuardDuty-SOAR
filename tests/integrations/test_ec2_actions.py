@@ -9,17 +9,25 @@ from guardduty_soar.actions.ec2.tag import TagInstanceAction
 # Mark all tests in this file as 'integration' tests
 pytestmark = pytest.mark.integration
 
+@pytest.fixture(scope="module")
+def aws_region():
+    """
+    Provides the AWs region for the test session, making tests portable.
+    It uses the region from the default boto3 session. If it can't find
+    it for whatever reason, it defaults to 'us-east-1'.
+    """
+    return boto3.Session().region_name or "us-east-1"
 
 @pytest.fixture(scope="module")
-def ssm_client():
+def ssm_client(aws_region):
     """Provides an SSM client for the test module."""
-    return boto3.client("ssm", region_name="us-east-1")
+    return boto3.client("ssm", region_name=aws_region)
 
 
 @pytest.fixture(scope="module")
-def ec2_client():
+def ec2_client(aws_region):
     """Provides an EC2 client for the test module."""
-    return boto3.client("ec2", region_name="us-east-1")
+    return boto3.client("ec2", region_name=aws_region)
 
 
 @pytest.fixture(scope="module")

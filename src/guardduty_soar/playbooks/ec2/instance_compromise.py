@@ -59,37 +59,9 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
 
     def run(self, event: GuardDutyEvent):
         logger.info(
-            f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['Instanceid']}"
+            f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['InstanceId']}"
         )
 
-        # TODO For right now the playbooks are not publicly available. We will be providing
-        # good documentation that highlights everything including potentially destructive
-        # actions like destroying a compromised instance. We will also be providing development
-        # requirements (as testing in your environment is a very-wise choice) as well as permissions
-        # needed for the Lambda function
-
-        # Step 1: Tag the instance with special tags.
-        tagging_result = self.tag_instance.execute(
-            event, playbook_name=self.__class__.__name__
-        )
-        if tagging_result["status"] == "error":
-            # tagging failed
-            error_details = tagging_result["details"]
-            logger.error(f"Action 'tag_instance' failed: {error_details}.")
-            raise PlaybookActionFailedError(
-                f"TagInstanceAction failed: {error_details}."
-            )
-
-        # Step 2: Isolate the instance with a quarantined SG. Ideally
-        # the security group should not have any inbound/outbound rules, and
-        # all other security groups previously used by the instance are removed.
-        isolate_result = self.isolate_instance.execute(event, config=self.config)
-        if isolate_result["status"] == "error":
-            # Isolation failed
-            error_details = isolate_result["details"]
-            logger.error(f"Action 'isolate_instance' failed: {error_details}.")
-            raise PlaybookActionFailedError(
-                f"IsolateInstanceAction failed: {error_details}."
-            )
-
-        logger.info(f"Successfully ran playbook on instance:")
+        # This playbook always assumes compromise, so it directly calls the
+        # inherited workflow.
+        self._run_compromise_workflow(event, self.__class__.__name__)

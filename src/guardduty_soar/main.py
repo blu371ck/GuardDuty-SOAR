@@ -60,19 +60,25 @@ def setup_logging():
     Configures the root logger based on the level specified in gd.cfg.
     """
     config = get_config()
-    log_level_str = config.log_level
+    app_log_level_str = config.log_level
+    boto_log_level_str = config.boto_log_level
 
     # Convert the string level (e.g., "INFO") to a logging constant (e.g., logging.INFO)
-    log_level = getattr(logging, log_level_str, logging.INFO)
+    app_log_level = getattr(logging, app_log_level_str, logging.INFO)
 
     # Using force=True to override any default handlers and ensure our format is used.
     logging.basicConfig(
-        level=log_level,
+        level=app_log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         force=True,
     )
-    logging.getLogger("main").info(f"Logging level is set to {log_level_str}.")
+    logging.getLogger("main").info(f"Logging level is set to {app_log_level_str}.")
+    boto_log_level = getattr(logging, boto_log_level_str, logging.WARNING)
+    logging.getLogger("boto3").setLevel(boto_log_level)
+    logging.getLogger("botocore").setLevel(boto_log_level)
+    logging.getLogger("urllib3").setLevel(boto_log_level)
+    logging.getLogger("main").info(f"AWS SDK (boto3) logging level set to {boto_log_level_str}.")
 
 
 # Configure logging as the very first step.
@@ -120,9 +126,9 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
     return {"statusCode": 200, "message": "GuardDuty finding successfully processed."}
 
 
-# current_script_path = Path(__file__)
-# target_directory = current_script_path.parents[2]
-# sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
+current_script_path = Path(__file__)
+target_directory = current_script_path.parents[2]
+sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
 
-# with open(sample_path, "r", encoding="utf-8") as file:
-#     main(json.load(file), {"something": "something"})
+with open(sample_path, "r", encoding="utf-8") as file:
+    main(json.load(file), {"something": "something"})
