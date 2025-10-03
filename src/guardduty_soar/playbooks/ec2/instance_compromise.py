@@ -7,6 +7,7 @@ from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
 logger = logging.getLogger(__name__)
 
+
 # To ensure DRY principles, we ensure that we are not recreating a playbook
 # that involves the same steps as another. For instance, these GuardDuty
 # finding types below, are all recommended for initiating a playbook for
@@ -62,7 +63,7 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         logger.info(
             f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['Instanceid']}"
         )
-        
+
         # TODO For right now the playbooks are not publicly available. We will be providing
         # good documentation that highlights everything including potentially destructive
         # actions like destroying a compromised instance. We will also be providing development

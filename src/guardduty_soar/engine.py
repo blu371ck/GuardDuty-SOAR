@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime
 
+from guardduty_soar.config import AppConfig
 from guardduty_soar.models import GuardDutyEvent
 from guardduty_soar.playbook_registry import get_playbook_instance
-from guardduty_soar.config import AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class Engine:
             playbook.run(self.event)
         # TODO Currently raising an exception for not having a playbook found.
         # Will later be adding functionality to allow end-users to pick
-        # and choose which alerts trigger, making it no longer a valid 
+        # and choose which alerts trigger, making it no longer a valid
         # exception.
         except ValueError as e:
             logger.critical(

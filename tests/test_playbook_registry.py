@@ -1,54 +1,45 @@
 import pytest
+from unittest.mock import MagicMock
 
-from guardduty_soar.playbook_registry import (_PLAYBOOK_REGISTRY, BasePlaybook,
-                                              get_playbook_instance,
-                                              register_playbook)
+from guardduty_soar.playbook_registry import (
+    register_playbook,
+    get_playbook_instance,
+    BasePlaybook,
+    _PLAYBOOK_REGISTRY
+)
 
-
-# Define some dummy playbook classes for testing purposes.
-@register_playbook("FindingTypeA", "FindingTypeB")
-class MockPlaybookA(BasePlaybook):
+# A simple mock playbook for testing
+class MockPlaybook(BasePlaybook):
     def run(self, event):
-        pass  # pragma: no cover
+        pass
 
-
-@register_playbook("FindingTypeC")
-class MockPlaybookC(BasePlaybook):
-    def run(self, event):
-        pass  # pragma: no cover
-
-
-def setup_function():
-    """A pytest setup function to clear the registry before each test."""
+@pytest.fixture(autouse=True)
+def clear_registry():
+    """A fixture to automatically clear the registry before each test."""
     _PLAYBOOK_REGISTRY.clear()
-    # Re-register after clearing
-    register_playbook("FindingTypeA", "FindingTypeB")(MockPlaybookA)
-    register_playbook("FindingTypeC")(MockPlaybookC)
+    yield
+    _PLAYBOOK_REGISTRY.clear()
 
+def test_register_playbook():
+    """Tests that the decorator correctly adds a playbook to the registry."""
+    register_playbook("FindingTypeA")(MockPlaybook)
+    assert "FindingTypeA" in _PLAYBOOK_REGISTRY
+    assert _PLAYBOOK_REGISTRY["FindingTypeA"] == MockPlaybook
 
-def test_get_playbook_instance_success():
+def test_get_playbook_instance_success(mock_app_config): # <-- Add fixture
     """Tests that the correct playbook instance is returned for a registered type."""
-    instance = get_playbook_instance("FindingTypeA")
-    assert isinstance(instance, MockPlaybookA)
+    register_playbook("FindingTypeA")(MockPlaybook)
+    
+    # We now pass the mock config to the function
+    instance = get_playbook_instance("FindingTypeA", mock_app_config)
+    
+    assert isinstance(instance, MockPlaybook)
+    assert instance.config == mock_app_config # Verify config was injected
 
-    instance_b = get_playbook_instance("FindingTypeB")
-    assert isinstance(instance_b, MockPlaybookA)
-
-    instance_c = get_playbook_instance("FindingTypeC")
-    assert isinstance(instance_c, MockPlaybookC)
-
-
-def test_get_playbook_instance_failure():
+def test_get_playbook_instance_failure(mock_app_config): # <-- Add fixture
     """Tests that a ValueError is raised for an unregistered finding type."""
     with pytest.raises(
         ValueError, match="No playbook registered for finding type: UnregisteredType"
     ):
-        get_playbook_instance("UnregisteredType")
+        get_playbook_instance("UnregisteredType", mock_app_config)
 
-
-def test_registration_populates_registry():
-    """Verifies that the decorator correctly populates the internal registry."""
-    assert _PLAYBOOK_REGISTRY["FindingTypeA"] == MockPlaybookA
-    assert _PLAYBOOK_REGISTRY["FindingTypeB"] == MockPlaybookA
-    assert _PLAYBOOK_REGISTRY["FindingTypeC"] == MockPlaybookC
-    assert len(_PLAYBOOK_REGISTRY) == 3

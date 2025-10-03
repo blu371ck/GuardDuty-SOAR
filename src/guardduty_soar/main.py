@@ -2,13 +2,14 @@ import importlib
 import json
 import logging
 import os
+from pathlib import Path
 
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from pathlib import Path
+
+from guardduty_soar.config import get_config
 from guardduty_soar.engine import Engine
 from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import LambdaEvent, Response
-from guardduty_soar.config import get_config
 
 
 def load_playbooks():
@@ -21,7 +22,9 @@ def load_playbooks():
     playbooks_root = os.path.join(package_dir, "playbooks")
 
     if not os.path.isdir(playbooks_root):
-        logger.critical(f"Playbooks directory not found at '{playbooks_root}'. No playbooks loaded.")
+        logger.critical(
+            f"Playbooks directory not found at '{playbooks_root}'. No playbooks loaded."
+        )
         return
 
     # Walk through the playbooks directory
@@ -34,7 +37,9 @@ def load_playbooks():
 
                 # Make the path relative to the 'src' directory's parent
                 # e.g., guardduty_soar/playbooks/ec2/instance_compromise.py
-                rel_path = os.path.relpath(full_path, os.path.join(package_dir, os.pardir))
+                rel_path = os.path.relpath(
+                    full_path, os.path.join(package_dir, os.pardir)
+                )
 
                 # Convert file path to Python's dot notation
                 # e.g., guardduty_soar.playbooks.ec2.instance_compromise
@@ -43,9 +48,12 @@ def load_playbooks():
                 try:
                     importlib.import_module(module_name)
                 except ImportError as e:
-                    logger.error(f"Failed to import playbook module {module_name}: {e}.")
+                    logger.error(
+                        f"Failed to import playbook module {module_name}: {e}."
+                    )
 
     logger.info("Playbook modules loaded and registered.")
+
 
 def setup_logging():
     """
@@ -62,9 +70,10 @@ def setup_logging():
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        force=True
+        force=True,
     )
     logging.getLogger("main").info(f"Logging level is set to {log_level_str}.")
+
 
 # Configure logging as the very first step.
 setup_logging()
@@ -97,7 +106,7 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
         engine = Engine(event["detail"], config)
 
         # Lookup the required playbook based on the GuardDuty event type.
-        #engine.handle_finding()
+        engine.handle_finding()
 
     except PlaybookActionFailedError as e:
         logger.critical(f"A playbook action failed, halting execution: {e}.")
@@ -110,9 +119,10 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
     logger.info("Successfully processed GuardDuty finding.")
     return {"statusCode": 200, "message": "GuardDuty finding successfully processed."}
 
-current_script_path = Path(__file__)
-target_directory = current_script_path.parents[2]
-sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
 
-with open(sample_path, 'r', encoding='utf-8') as file:
-    main(json.load(file), {'something': 'something'})
+# current_script_path = Path(__file__)
+# target_directory = current_script_path.parents[2]
+# sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
+
+# with open(sample_path, "r", encoding="utf-8") as file:
+#     main(json.load(file), {"something": "something"})

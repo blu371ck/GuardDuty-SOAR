@@ -3,12 +3,16 @@ import os
 from functools import lru_cache
 from typing import List
 
+
 class AppConfig:
     """
     A singleton class to handle parsing and providing access to the gd.cfg file.
     """
+
     def __init__(self, config_file="gd.cfg"):
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        project_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         config_path = os.path.join(project_root, config_file)
 
         if not os.path.exists(config_path):
@@ -16,7 +20,7 @@ class AppConfig:
 
         self._config = configparser.ConfigParser()
         self._config.read(config_path)
-    
+
     # --- General Section ---
     @property
     def log_level(self) -> str:
@@ -31,7 +35,7 @@ class AppConfig:
     @property
     def ec2_ignored_findings(self) -> List[str]:
         raw_value = self._config.get("EC2", "ignored_findings", fallback="")
-        return [line.strip() for line in raw_value.split('\n') if line.strip()]
+        return [line.strip() for line in raw_value.split("\n") if line.strip()]
 
     @property
     def quarantine_sg_id(self) -> str:
@@ -69,7 +73,7 @@ class AppConfig:
     @property
     def allow_chatbot(self) -> bool:
         return self._config.getboolean("Notifications", "allow_chatbot", fallback=False)
-    
+
     @property
     def chatbot_sns_topic_arn(self) -> str:
         return self._config.get("Notifications", "chatbot_sns_topic_arn")

@@ -3,8 +3,8 @@ from typing import Callable, Dict, Type
 
 import boto3
 
-from guardduty_soar.models import GuardDutyEvent
 from guardduty_soar.config import AppConfig
+from guardduty_soar.models import GuardDutyEvent
 
 logger = logging.getLogger(__name__)
 
