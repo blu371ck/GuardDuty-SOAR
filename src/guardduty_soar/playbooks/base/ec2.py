@@ -1,6 +1,8 @@
 import logging
 
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
+from guardduty_soar.actions.ec2.quarantine import \
+    QuarantineInstanceProfileAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
@@ -26,6 +28,9 @@ class EC2BasePlaybook(BasePlaybook):
         # EC2 reports/findings.
         self.tag_instance = TagInstanceAction(self.session, self.config)
         self.isolate_instance = IsolateInstanceAction(self.session, self.config)
+        self.quarantine_profile = QuarantineInstanceProfileAction(
+            self.session, self.config
+        )
 
     def _run_compromise_workflow(self, event: GuardDutyEvent, playbook_name: str):
         # Step 1: Tag the instance with special tags.
@@ -50,6 +55,18 @@ class EC2BasePlaybook(BasePlaybook):
             logger.error(f"Action 'isolate_instance' failed: {error_details}.")
             raise PlaybookActionFailedError(
                 f"IsolateInstanceAction failed: {error_details}."
+            )
+
+        # Step 3: Attach a deny all policy to the IAM instance profile associated
+        # with the instance. We check if there is an instance profile, if there
+        # isn't we return success and move on.
+        quarantine_result = self.quarantine_profile.execute(event, config=self.config)
+        if quarantine_result["status"] == "error":
+            # Quarantine failed
+            error_details = quarantine_result["details"]
+            logger.error(f"Action 'quarantine_profile' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"QuarantineInstanceProfileAction failed: {error_details}."
             )
 
         logger.info(f"Successfully ran playbook on instance:")

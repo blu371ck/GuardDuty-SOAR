@@ -9,6 +9,7 @@ def mock_app_config():
     """Provides a mock AppConfig object with default values for testing."""
     config = MagicMock()
     config.log_level = "INFO"
+    config.boto_log_level = "WARNING"
     config.ec2_ignored_findings = []
     return config
 
@@ -28,6 +29,10 @@ def guardduty_finding_detail():
         "Resource": {
             "ResourceType": "Instance",
             "InstanceDetails": {
+                "IamInstanceProfile": {
+                    "Arn": "arn:aws:iam::1234567891234:instance-profile/generated",
+                    "Id": "GeneratedFindingInstanceProfileId",
+                },
                 "InstanceId": "i-99999999",
             },
         },

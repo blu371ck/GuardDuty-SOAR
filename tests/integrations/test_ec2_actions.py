@@ -1,13 +1,17 @@
+import json
 import time
 
 import boto3
 import pytest
 
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
+from guardduty_soar.actions.ec2.quarantine import \
+    QuarantineInstanceProfileAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 
 # Mark all tests in this file as 'integration' tests
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(scope="module")
 def aws_region():
@@ -17,6 +21,7 @@ def aws_region():
     it for whatever reason, it defaults to 'us-east-1'.
     """
     return boto3.Session().region_name or "us-east-1"
+
 
 @pytest.fixture(scope="module")
 def ssm_client(aws_region):
@@ -28,6 +33,18 @@ def ssm_client(aws_region):
 def ec2_client(aws_region):
     """Provides an EC2 client for the test module."""
     return boto3.client("ec2", region_name=aws_region)
+
+
+@pytest.fixture(scope="module")
+def iam_client(aws_region):
+    """Provides an IAM client for the test module."""
+    return boto3.client("iam", region_name=aws_region)
+
+
+@pytest.fixture(scope="module")
+def sts_client(aws_region):
+    """Provides an STS client for the test module."""
+    return boto3.client("sts", region_name=aws_region)
 
 
 @pytest.fixture(scope="module")
@@ -112,7 +129,6 @@ def quarantine_sg(ec2_client):
     ec2_client.delete_security_group(GroupId=sg_id)
 
 
-
 def test_tag_instance_action_integration(
     temporary_ec2_instance, guardduty_finding_detail, mock_app_config
 ):
@@ -174,3 +190,115 @@ def test_isolate_instance_action_integration(
 
     assert len(attached_sgs) == 1
     assert attached_sgs[0] == quarantine_sg
+
+
+@pytest.fixture(scope="module")
+def test_iam_resources(iam_client):
+    """Creates a temporary IAM role, instance profile, and deny policy for testing."""
+    role_name = "gd-soar-test-role"
+    profile_name = "gd-soar-test-profile"
+    policy_name = "gd-soar-test-deny-policy"
+
+    assume_role_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "ec2.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+    deny_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Deny", "Action": "*", "Resource": "*"}],
+    }
+
+    # Create Role
+    role = iam_client.create_role(
+        RoleName=role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
+    )
+
+    # Create Policy
+    policy = iam_client.create_policy(
+        PolicyName=policy_name, PolicyDocument=json.dumps(deny_policy_document)
+    )
+    policy_arn = policy["Policy"]["Arn"]
+
+    # Create Instance Profile
+    instance_profile = iam_client.create_instance_profile(
+        InstanceProfileName=profile_name
+    )
+    iam_client.add_role_to_instance_profile(
+        InstanceProfileName=profile_name, RoleName=role_name
+    )
+
+    # Give AWS time for the instance profile to be ready
+    time.sleep(10)
+
+    yield {
+        "role_name": role_name,
+        "profile_name": profile_name,
+        "policy_arn": policy_arn,
+    }
+
+    # --- TEARDOWN ---
+    iam_client.remove_role_from_instance_profile(
+        InstanceProfileName=profile_name, RoleName=role_name
+    )
+    iam_client.delete_instance_profile(InstanceProfileName=profile_name)
+
+    # Detach any policies before deleting role
+    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
+        "AttachedPolicies"
+    ]
+    for p in attached_policies:
+        iam_client.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
+    iam_client.delete_role(RoleName=role_name)
+
+    # The deny-all policy is managed by the user in production, but we created it for the test.
+    # To delete it, we must detach it from any entities first. Since we only attached it to one role,
+    # and we just detached everything from that role, we should be clear to delete.
+    iam_client.delete_policy(PolicyArn=policy_arn)
+
+
+def test_quarantine_profile_action_integration(
+    guardduty_finding_detail,
+    mock_app_config,
+    test_iam_resources,
+    iam_client,
+    sts_client,
+    aws_region,
+):
+    """
+    This test runs the QuarantineInstanceProfileAction against a REAL, temporary IAM Role.
+    """
+    # 1. SETUP
+    role_name = test_iam_resources["role_name"]
+    deny_policy_arn = test_iam_resources["policy_arn"]
+
+    # Update the mock config to use our real, temporary deny policy
+    mock_app_config.iam_deny_all_policy_arn = deny_policy_arn
+
+    # Update the finding to point to our temporary role
+    finding = guardduty_finding_detail
+    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"][
+        "Arn"
+    ] = f"arn:aws:iam::{sts_client.get_caller_identity()['Account']}:instance-profile/{role_name}"
+
+    session = boto3.Session(region_name=aws_region)
+    action = QuarantineInstanceProfileAction(session, mock_app_config)
+
+    # 2. ACT
+    result = action.execute(finding)
+
+    # 3. ASSERT
+    assert result["status"] == "success"
+
+    # Verify the deny policy is now attached to the role
+    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
+        "AttachedPolicies"
+    ]
+    attached_policy_arns = [p["PolicyArn"] for p in attached_policies]
+
+    assert deny_policy_arn in attached_policy_arns

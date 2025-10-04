@@ -78,7 +78,9 @@ def setup_logging():
     logging.getLogger("boto3").setLevel(boto_log_level)
     logging.getLogger("botocore").setLevel(boto_log_level)
     logging.getLogger("urllib3").setLevel(boto_log_level)
-    logging.getLogger("main").info(f"AWS SDK (boto3) logging level set to {boto_log_level_str}.")
+    logging.getLogger("main").info(
+        f"AWS SDK (boto3) logging level set to {boto_log_level_str}."
+    )
 
 
 # Configure logging as the very first step.
@@ -115,7 +117,7 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
         engine.handle_finding()
 
     except PlaybookActionFailedError as e:
-        logger.critical(f"A playbook action failed, halting execution: {e}.")
+        logger.error(f"A playbook action failed, halting execution: {e}.")
         return {"statusCode": 500, "message": f"Internal playbook error: {e}"}
 
     except (ValueError, KeyError) as e:
@@ -124,11 +126,3 @@ def main(event: LambdaEvent, context: LambdaContext) -> Response:
 
     logger.info("Successfully processed GuardDuty finding.")
     return {"statusCode": 200, "message": "GuardDuty finding successfully processed."}
-
-
-current_script_path = Path(__file__)
-target_directory = current_script_path.parents[2]
-sample_path = target_directory / "Samples\\Trojan-EC2-DropPoint.json"
-
-with open(sample_path, "r", encoding="utf-8") as file:
-    main(json.load(file), {"something": "something"})

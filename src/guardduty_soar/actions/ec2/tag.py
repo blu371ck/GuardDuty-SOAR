@@ -68,3 +68,8 @@ class TagInstanceAction(BaseAction):
             details = f"Failed to add tags to instance: {instance_id}. Error: {e}."
             logger.error(details)
             return {"status": "error", "details": details}
+        except Exception as e:
+            # Generic catch all
+            details = f"An unknown error occurred: {e}."
+            logger.error(details)
+            return {"status": "error", "details": details}

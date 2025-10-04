@@ -30,11 +30,13 @@ class AppConfig:
         if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             return "INFO"
         return level
-    
+
     @property
     def boto_log_level(self) -> str:
         """The log level for the AWS SDK (boto3)."""
-        level = self._config.get("General", "boto_log_level", fallback="WARNING").upper()
+        level = self._config.get(
+            "General", "boto_log_level", fallback="WARNING"
+        ).upper()
         if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             return "WARNING"
         return level
@@ -48,6 +50,10 @@ class AppConfig:
     @property
     def quarantine_sg_id(self) -> str:
         return self._config.get("EC2", "quarantine_security_group_id")
+
+    @property
+    def iam_deny_all_policy_arn(self) -> str:
+        return self._config.get("EC2", "iam_deny_all_policy_arn")
 
     @property
     def snapshot_description_prefix(self) -> str:
