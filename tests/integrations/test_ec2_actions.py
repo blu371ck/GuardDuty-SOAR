@@ -107,12 +107,19 @@ def temporary_ec2_instance(latest_amazon_linux_ami, testing_subnet_id):
     waiter.wait(InstanceIds=[instance_id])
 
     # Yield the instance ID to the test function
-    yield instance_id
-
-    # Tear it down.
-    ec2_client.terminate_instances(InstanceIds=[instance_id])
-    waiter = ec2_client.get_waiter("instance_terminated")
-    waiter.wait(InstanceIds=[instance_id])
+    try:
+        yield instance_id
+    finally:
+        # Tear it down.
+        try:
+            ec2_client.terminate_instances(InstanceIds=[instance_id])
+            waiter = ec2_client.get_waiter("instance_terminated")
+            waiter.wait(InstanceIds=[instance_id])
+            print("Instance terminated.")
+        except ClientError as e:
+            print(
+                f"Could not terminate instance {instance_id}. Manual cleanup may be required. Error: {e}."
+            )
 
 
 @pytest.fixture(scope="module")
@@ -129,10 +136,18 @@ def quarantine_sg(ec2_client):
         VpcId=vpc_id,
     )
     sg_id = sg["GroupId"]
-    yield sg_id
 
-    # --- Teardown ---
-    ec2_client.delete_security_group(GroupId=sg_id)
+    try:
+        yield sg_id
+    finally:
+        # --- Teardown ---
+        try:
+            ec2_client.delete_security_group(GroupId=sg_id)
+            print("Security group deleted.")
+        except ClientError as e:
+            print(
+                f"Could not delete security group {sg_id}. Manual cleanup may be required. Error: {e}."
+            )
 
 
 def test_tag_instance_action_integration(
@@ -352,7 +367,7 @@ def test_create_snapshot_action_integration(
                     "Values": [instance_id],
                 },
                 {
-                    "Name": "tag:GuardDuty-SOAR-Finding-Id",
+                    "Name": "tag:GuardDuty-SOAR-Finding-ID",
                     "Values": [guardduty_finding_detail["Id"]],
                 },
             ]
@@ -363,19 +378,22 @@ def test_create_snapshot_action_integration(
 
         snapshot = snapshots[0]
         created_snapshot_ids.append(snapshot["SnapshotId"])
-
+        
         assert guardduty_finding_detail["Id"] in snapshot["Description"]
 
     finally:
         # --- Teardown ---
         if not created_snapshot_ids:
-            # nothing to clean up
+            print("No snapshots to clean up.")
             return
 
         for snapshot_id in created_snapshot_ids:
             try:
                 ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+                print("Deleted snapshot.")
             except ClientError as e:
                 print(
                     f"Could not delete snapshot {snapshot_id}. Manual cleanup may be required. Error: {e}."
                 )
+            except Exception as e:
+                print(f"ERROR 4000: {e}.")

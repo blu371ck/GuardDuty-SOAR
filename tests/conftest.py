@@ -11,6 +11,7 @@ def mock_app_config():
     config.log_level = "INFO"
     config.boto_log_level = "WARNING"
     config.ec2_ignored_findings = []
+    config.snapshot_description_prefix = "GD-SOAR-Test-Snapshot-"
     return config
 
 

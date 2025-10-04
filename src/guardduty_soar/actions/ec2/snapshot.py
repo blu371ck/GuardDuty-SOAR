@@ -93,7 +93,7 @@ class CreateSnapshotAction(BaseAction):
                                     "Value": event["Id"],
                                 },
                                 {
-                                    "Key": "GaurdDuty-SOAR-Source-Instance-ID",
+                                    "Key": "GuardDuty-SOAR-Source-Instance-ID",
                                     "Value": instance_id,
                                 },
                             ],
