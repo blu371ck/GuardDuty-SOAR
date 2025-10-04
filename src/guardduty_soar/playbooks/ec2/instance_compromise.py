@@ -64,28 +64,3 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         # Step 1: This playbook always assumes compromise, so it directly calls the
         # inherited workflow.
         self._run_compromise_workflow(event, self.__class__.__name__)
-
-        # Step 5: Enrich the GuardDuty finding event with metadata about the
-        # compromised EC2 instance. This data is then passed through to the end-user
-        # via the notification methods coming up.
-        enrichment_result = self.enrich_finding.execute(event, config=self.config)
-        if enrichment_result["status"] == "error":
-            # Enrichment failed
-            error_details = enrichment_result["details"]
-            logger.error(f"Action: 'enrich_finding' failed: {error_details}.")
-            # Passing basic enriched object to allow notification to proceed.
-            enriched_finding = {"guardduty_finding": event, "instance_metadata": {}}
-        else:
-            enriched_finding = enrichment_result["details"]
-            logger.info("Successfully performed enrichment step.")
-
-        snapshot_result = self.create_snapshots.execute(event, config=self.config)
-        if snapshot_result["status"] == "error":
-            # Snapshotting failed
-            error_details = snapshot_result["details"]
-            logger.error(f"Action: 'create_snapshot' failed: {error_details}.")
-            raise PlaybookActionFailedError(
-                f"CreateSnapshotAction failed: {error_details}."
-            )
-
-        logger.info(f"Successfully ran playbook on instance:")

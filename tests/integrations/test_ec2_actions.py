@@ -12,6 +12,7 @@ from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
 from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
+from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction
 
 # Mark all tests in this file as 'integration' tests
 pytestmark = pytest.mark.integration
@@ -397,8 +398,6 @@ def test_create_snapshot_action_integration(
                 print(
                     f"Could not delete snapshot {snapshot_id}. Manual cleanup may be required. Error: {e}."
                 )
-            except Exception as e:
-                print(f"ERROR 4000: {e}.")
 
 
 def test_enrich_finding_action_integration(
@@ -438,3 +437,52 @@ def test_enrich_finding_action_integration(
     assert "SubnetId" in instance_metadata
 
     print("Successfully enriched finding.")
+
+
+def test_terminate_instance_action_integration(
+    temporary_ec2_instance, guardduty_finding_detail, mock_app_config, ec2_client
+):
+    """
+    This test runs the TerminateInstanceAction against a REAL, temporary EC2 instance
+    and verifies that it enters the 'shutting-down' state.
+    """
+    instance_id = temporary_ec2_instance
+    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+
+    # Ensure termination is enabled for this test
+    mock_app_config.allow_terminate = True
+
+    session = boto3.Session(region_name=ec2_client.meta.region_name)
+    action = TerminateInstanceAction(session, mock_app_config)
+
+    print(f"\nAbout to terminate instance {instance_id} as part of the test...")
+    result = action.execute(guardduty_finding_detail)
+
+    assert (
+        result["status"] == "success"
+    ), f"Action failed with details: {result['details']}"
+    assert "Successfully initiated termination" in result["details"]
+
+    # Give AWS a moment to process the termination request
+    print("Waiting for instance state to change...")
+    time.sleep(10)
+
+    # Verify the instance's state is now 'shutting-down' or 'terminated'
+    try:
+        response = ec2_client.describe_instances(InstanceIds=[instance_id])
+        instance = response["Reservations"][0]["Instances"][0]
+        instance_state = instance["State"]["Name"]
+
+        assert instance_state in ["shutting-down", "terminated"]
+        print(f"Verified instance {instance_id} is in '{instance_state}' state.")
+
+    except ClientError as e:
+        # If the instance is not found, it means it terminated very quickly, which is a pass.
+        if e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
+            print(
+                f"Instance {instance_id} was not found, assuming successful termination."
+            )
+            pass
+        else:
+            # Re-raise any other API errors
+            raise e

@@ -7,6 +7,7 @@ from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
 from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
+from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import GuardDutyEvent
@@ -38,6 +39,7 @@ class EC2BasePlaybook(BasePlaybook):
         self.enrich_finding = EnrichFindingWithInstanceMetadataAction(
             self.session, self.config
         )
+        self.terminate_instance = TerminateInstanceAction(self.session, self.config)
 
     def _run_compromise_workflow(self, event: GuardDutyEvent, playbook_name: str):
         # Step 1: Tag the instance with special tags.
@@ -93,3 +95,30 @@ class EC2BasePlaybook(BasePlaybook):
                 f"CreateSnapshotAction failed: {error_details}."
             )
         logger.info("Successfully took snapshot(s) of instances volumes.")
+
+        # Step 5: Enrich the GuardDuty finding event with metadata about the
+        # compromised EC2 instance. This data is then passed through to the end-user
+        # via the notification methods coming up.
+        enrichment_result = self.enrich_finding.execute(event, config=self.config)
+        if enrichment_result["status"] == "error":
+            # Enrichment failed
+            error_details = enrichment_result["details"]
+            logger.error(f"Action: 'enrich_finding' failed: {error_details}.")
+            # Passing basic enriched object to allow notification to proceed.
+            enriched_finding = {"guardduty_finding": event, "instance_metadata": {}}
+        else:
+            enriched_finding = enrichment_result["details"]
+        logger.info("Successfully performed enrichment step.")
+
+        # Step 6: Terminate the instance, if user has selected for destructive actions.
+        terminate_result = self.terminate_instance.execute(event, config=self.config)
+        if terminate_result["status"] == "error":
+            # Termination failed
+            error_details = terminate_result["details"]
+            logger.error(f"Action: 'terminate_instance' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"TerminateInstanceAction failed: {error_details}."
+            )
+        logger.info("Successfully terminated instance.")
+
+        logger.info(f"Successfully ran playbook on instance:")

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, TypedDict
+from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 
 class Response(TypedDict):
@@ -65,3 +65,30 @@ class ActionResponse(TypedDict):
 
     status: Literal["success", "error"]
     details: Any
+
+
+class MalwareScanDetail(TypedDict):
+    """
+    Models the 'detail' object of a GuardDuty Malware Scan status change event.
+    """
+
+    scanId: str
+    scanStatus: Literal["COMPLETED", "FAILED"]
+    resourceArn: str
+    threats: List[Dict[str, Any]]
+
+
+class MalwareScanEvent(TypedDict):
+    """
+    The top-level event for a GuardDuty Malware Scan status change.
+    """
+
+    version: str
+    id: str
+    detail_type: Literal["GuardDuty Malware Protection Scan status change"]
+    source: Literal["aws.guardduty"]
+    account: str
+    time: str
+    region: str
+    resources: List[str]
+    detail: MalwareScanDetail
