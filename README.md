@@ -1,5 +1,4 @@
-# GuardDuty-SOAR
-
+![guardduty_image](./images/guardduty_soar_logo.png)
 ![Static Badge](https://img.shields.io/badge/Alpha-BBB?style=plastic&label=Dev%20Stage)
 ![Static Badge](https://img.shields.io/badge/Python-3.13-BBB?logo=python&logoColor=fff)
 ![isort](https://img.shields.io/badge/%20Import_Style-isort-BBB?style=plastic&logo=Python&logoColor=FFFFFF)
