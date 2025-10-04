@@ -1,5 +1,7 @@
 import logging
 
+from guardduty_soar.actions.ec2.enrich import \
+    EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
@@ -33,6 +35,9 @@ class EC2BasePlaybook(BasePlaybook):
             self.session, self.config
         )
         self.create_snapshots = CreateSnapshotAction(self.session, self.config)
+        self.enrich_finding = EnrichFindingWithInstanceMetadataAction(
+            self.session, self.config
+        )
 
     def _run_compromise_workflow(self, event: GuardDutyEvent, playbook_name: str):
         # Step 1: Tag the instance with special tags.
@@ -46,6 +51,7 @@ class EC2BasePlaybook(BasePlaybook):
             raise PlaybookActionFailedError(
                 f"TagInstanceAction failed: {error_details}."
             )
+        logger.info("Successfully tagged instance.")
 
         # Step 2: Isolate the instance with a quarantined SG. Ideally
         # the security group should not have any inbound/outbound rules, and
@@ -58,6 +64,7 @@ class EC2BasePlaybook(BasePlaybook):
             raise PlaybookActionFailedError(
                 f"IsolateInstanceAction failed: {error_details}."
             )
+        logger.info("Successfully isolated instance.")
 
         # Step 3: Attach a deny all policy to the IAM instance profile associated
         # with the instance. We check if there is an instance profile, if there
@@ -70,6 +77,7 @@ class EC2BasePlaybook(BasePlaybook):
             raise PlaybookActionFailedError(
                 f"QuarantineInstanceProfileAction failed: {error_details}."
             )
+        logger.info("Successfully quarantined instance.")
 
         # Step 4: Create snapshots of all attached EBS volumes. Programmatically
         # checks for number and if any exists and iterates over them all. As we
@@ -84,5 +92,4 @@ class EC2BasePlaybook(BasePlaybook):
             raise PlaybookActionFailedError(
                 f"CreateSnapshotAction failed: {error_details}."
             )
-
-        logger.info(f"Successfully ran playbook on instance:")
+        logger.info("Successfully took snapshot(s) of instances volumes.")

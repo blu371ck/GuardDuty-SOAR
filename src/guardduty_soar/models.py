@@ -1,16 +1,6 @@
 from typing import Any, Dict, List, Literal, TypedDict
 
 
-class ActionResponse(TypedDict):
-    """
-    A standardized dictionary structure for the return value of all Action
-    classes.
-    """
-
-    status: Literal["success", "error"]
-    details: str
-
-
 class Response(TypedDict):
     """
     Models the Lambda functions response type.
@@ -55,3 +45,23 @@ LambdaEvent = TypedDict(
         "detail": GuardDutyEvent,
     },
 )
+
+
+class EnrichedEC2Finding(TypedDict):
+    """
+    A data structure that combines the original GuardDuty finding with
+    rich metadata from the describe_instances call.
+    """
+
+    guardduty_finding: GuardDutyEvent
+    instance_metadata: Dict[str, Any]
+
+
+class ActionResponse(TypedDict):
+    """
+    A standardized dictionary structure for the return value of all Action
+    classes.
+    """
+
+    status: Literal["success", "error"]
+    details: Any

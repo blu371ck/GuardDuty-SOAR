@@ -5,6 +5,8 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 
+from guardduty_soar.actions.ec2.enrich import \
+    EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
@@ -378,7 +380,7 @@ def test_create_snapshot_action_integration(
 
         snapshot = snapshots[0]
         created_snapshot_ids.append(snapshot["SnapshotId"])
-        
+
         assert guardduty_finding_detail["Id"] in snapshot["Description"]
 
     finally:
@@ -397,3 +399,42 @@ def test_create_snapshot_action_integration(
                 )
             except Exception as e:
                 print(f"ERROR 4000: {e}.")
+
+
+def test_enrich_finding_action_integration(
+    temporary_ec2_instance, guardduty_finding_detail, mock_app_config, ec2_client
+):
+    """
+    This test runs the EnrichFindingWithInstanceMetadataAction against a REAL,
+    temporary EC2 instance and validates the returned metadata.
+    """
+    instance_id = temporary_ec2_instance
+    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+
+    session = boto3.Session(region_name=ec2_client.meta.region_name)
+    action = EnrichFindingWithInstanceMetadataAction(session, mock_app_config)
+
+    result = action.execute(guardduty_finding_detail)
+
+    assert (
+        result["status"] == "success"
+    ), f"Action failed with details: {result['details']}"
+
+    # Verify the structure of the enriched finding
+    enriched_finding = result["details"]
+    assert "guardduty_finding" in enriched_finding
+    assert "instance_metadata" in enriched_finding
+
+    # Verify the content of the enriched data
+    assert enriched_finding["guardduty_finding"] == guardduty_finding_detail
+
+    instance_metadata = enriched_finding["instance_metadata"]
+    assert instance_metadata is not None
+    assert instance_metadata["InstanceId"] == instance_id
+
+    # If need be we can add more and more singleton assertions here to test the structure
+    # of the results.
+    assert "VpcId" in instance_metadata
+    assert "SubnetId" in instance_metadata
+
+    print("Successfully enriched finding.")
