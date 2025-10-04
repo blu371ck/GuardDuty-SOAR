@@ -3,6 +3,7 @@ import logging
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
+from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
@@ -31,6 +32,7 @@ class EC2BasePlaybook(BasePlaybook):
         self.quarantine_profile = QuarantineInstanceProfileAction(
             self.session, self.config
         )
+        self.create_snapshots = CreateSnapshotAction(self.session, self.config)
 
     def _run_compromise_workflow(self, event: GuardDutyEvent, playbook_name: str):
         # Step 1: Tag the instance with special tags.
@@ -67,6 +69,20 @@ class EC2BasePlaybook(BasePlaybook):
             logger.error(f"Action 'quarantine_profile' failed: {error_details}.")
             raise PlaybookActionFailedError(
                 f"QuarantineInstanceProfileAction failed: {error_details}."
+            )
+
+        # Step 4: Create snapshots of all attached EBS volumes. Programmatically
+        # checks for number and if any exists and iterates over them all. As we
+        # do not know if/where any malicious activity could be nested in the
+        # volumes. Appropriate tags are added as part of the call to
+        # create_snapshot boto3 command.
+        snapshot_result = self.create_snapshots.execute(event, config=self.config)
+        if snapshot_result["status"] == "error":
+            # Snapshotting failed
+            error_details = snapshot_result["details"]
+            logger.error(f"Action: 'create_snapshot' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"CreateSnapshotAction failed: {error_details}."
             )
 
         logger.info(f"Successfully ran playbook on instance:")

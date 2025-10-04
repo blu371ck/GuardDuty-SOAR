@@ -3,10 +3,12 @@ import time
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import \
     QuarantineInstanceProfileAction
+from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 
 # Mark all tests in this file as 'integration' tests
@@ -57,6 +59,10 @@ def latest_amazon_linux_ami(ssm_client):
     return ami_id
 
 
+# We require you bring your own subnet for testing. The subnet needs to be
+# named "testing-subnet". The reason we require this is because we have no
+# way to determine an appropriate subnet CIDR based on the endless possibilities
+# of CIDRs of the parent VPC. Plus, we do not know which CIDRs are already taken.
 @pytest.fixture(scope="module")
 def testing_subnet_id():
     """
@@ -302,3 +308,74 @@ def test_quarantine_profile_action_integration(
     attached_policy_arns = [p["PolicyArn"] for p in attached_policies]
 
     assert deny_policy_arn in attached_policy_arns
+
+
+# This test is pretty complex, unfortunately the lifecycle of a snapshot is complicated
+# and time consuming. We have to ensure we build it up, test it and tear down anything
+# we created, while ensuring we provide adequate time for the item to provision.
+def test_create_snapshot_action_integration(
+    temporary_ec2_instance,
+    guardduty_finding_detail,
+    mock_app_config,
+    ec2_client,
+    aws_region,
+):
+    """
+    This test runs the CreateSnapshotAction against a REAL, temporary EC2 instance,
+    verifies the snapshot is created, and cleans up the snapshot afterwards.
+    """
+
+    instance_id = temporary_ec2_instance
+    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+
+    session = boto3.Session(region_name=aws_region)
+    action = CreateSnapshotAction(session, mock_app_config)
+
+    created_snapshot_ids = []  # Keep track of snapshots for deletion.
+
+    try:
+        result = action.execute(guardduty_finding_detail)
+
+        assert (
+            result["status"] == "success"
+        ), f"Action failed with details: {result["details"]}"
+        assert "Successfully created snapshots" in result["details"]
+
+        # We have to give AWS time for snapshots to provision and get tagged.
+        time.sleep(10)
+
+        # Now we need to find the snapshot by using its tags.
+        response = ec2_client.describe_snapshots(
+            Filters=[
+                {
+                    "Name": "tag:GuardDuty-SOAR-Source-Instance-ID",
+                    "Values": [instance_id],
+                },
+                {
+                    "Name": "tag:GuardDuty-SOAR-Finding-Id",
+                    "Values": [guardduty_finding_detail["Id"]],
+                },
+            ]
+        )
+
+        snapshots = response.get("Snapshots", [])
+        assert len(snapshots) >= 1, "No snapshot was found with the expected tags."
+
+        snapshot = snapshots[0]
+        created_snapshot_ids.append(snapshot["SnapshotId"])
+
+        assert guardduty_finding_detail["Id"] in snapshot["Description"]
+
+    finally:
+        # --- Teardown ---
+        if not created_snapshot_ids:
+            # nothing to clean up
+            return
+
+        for snapshot_id in created_snapshot_ids:
+            try:
+                ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+            except ClientError as e:
+                print(
+                    f"Could not delete snapshot {snapshot_id}. Manual cleanup may be required. Error: {e}."
+                )
