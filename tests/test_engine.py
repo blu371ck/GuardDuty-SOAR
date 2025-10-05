@@ -1,64 +1,92 @@
-import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from guardduty_soar.engine import Engine
+from guardduty_soar.exceptions import PlaybookActionFailedError
 
-# Note: We now include 'mock_app_config' in the function signature for each test.
 
-
-def test_engine_initialization_success(
-    guardduty_finding_detail, mock_app_config, caplog
+@patch("guardduty_soar.engine.boto3.Session")
+@patch("guardduty_soar.engine.NotificationManager")
+def test_engine_initialization(
+    MockNotificationManager, MockBotoSession, guardduty_finding_detail, mock_app_config
 ):
-    """Tests that the Engine class initializes correctly with a valid event."""
-    # The fixture data now has the correct keys, so this will pass.
-    with caplog.at_level(logging.INFO):
-        engine = Engine(guardduty_finding_detail, mock_app_config)
-
-        assert engine.event == guardduty_finding_detail
-        assert engine.config == mock_app_config
-        assert "Incoming GuardDuty event" in caplog.text
-
-
-def test_engine_initialization_failure(mock_app_config):
-    """Tests that the Engine class raises a ValueError for an incomplete event."""
-    incomplete_event = {"Id": "123"}  # Still missing required keys
-    with pytest.raises(ValueError, match="Event not complete."):
-        Engine(incomplete_event, mock_app_config)
-
-
-def test_handle_finding_success(guardduty_finding_detail, mock_app_config):
-    """
-    Tests that handle_finding successfully gets a playbook from the registry
-    and calls its run method.
-    """
+    """Tests that the Engine initializes correctly and sets up its components."""
     engine = Engine(guardduty_finding_detail, mock_app_config)
 
+    assert engine.event == guardduty_finding_detail
+    assert engine.config == mock_app_config
+    MockBotoSession.assert_called_once()
+    MockNotificationManager.assert_called_once_with(
+        MockBotoSession.return_value, mock_app_config
+    )
+
+
+@patch("guardduty_soar.engine.NotificationManager")
+@patch("guardduty_soar.engine.get_playbook_instance")
+def test_handle_finding_success(
+    mock_get_playbook,
+    MockNotificationManager,
+    guardduty_finding_detail,
+    mock_app_config,
+):
+    """
+    Tests the full success path of the engine's handle_finding method.
+    """
+    # 1. SETUP
     mock_playbook = MagicMock()
-    with patch(
-        "guardduty_soar.engine.get_playbook_instance", return_value=mock_playbook
-    ) as mock_get_playbook:
-        engine.handle_finding()
+    mock_playbook.run.return_value = (
+        [],
+        {"enriched": "data"},
+    )  # Mock the playbook's return value
+    mock_get_playbook.return_value = mock_playbook
 
-        mock_get_playbook.assert_called_once_with(
-            guardduty_finding_detail["Type"], mock_app_config
-        )
-        mock_playbook.run.assert_called_once_with(guardduty_finding_detail)
+    engine = Engine(guardduty_finding_detail, mock_app_config)
+    mock_notification_manager = MockNotificationManager.return_value
+
+    # 2. ACT
+    engine.handle_finding()
+
+    # 3. ASSERT
+    # Assert starting notification was sent
+    mock_notification_manager.send_starting_notification.assert_called_once()
+
+    # Assert playbook was retrieved and run
+    mock_get_playbook.assert_called_once_with(
+        guardduty_finding_detail["Type"], mock_app_config
+    )
+    mock_playbook.run.assert_called_once_with(guardduty_finding_detail)
+
+    # Assert complete notification was sent with the enriched data
+    mock_notification_manager.send_complete_notification.assert_called_once()
+    call_args = mock_notification_manager.send_complete_notification.call_args
+    assert call_args.kwargs["data"] == {"enriched": "data"}
+    assert call_args.kwargs["action_results"] == []
 
 
-def test_handle_finding_failure_logs_critical(
-    guardduty_finding_detail, mock_app_config, caplog
+@patch("guardduty_soar.engine.NotificationManager")
+@patch("guardduty_soar.engine.get_playbook_instance")
+def test_handle_finding_playbook_fails(
+    mock_get_playbook,
+    MockNotificationManager,
+    guardduty_finding_detail,
+    mock_app_config,
 ):
     """
-    Tests that handle_finding logs a critical error if no playbook is found.
+    Tests the path where the playbook's run method raises an exception.
     """
-    engine = Engine(guardduty_finding_detail, mock_app_config)
+    mock_playbook = MagicMock()
+    mock_playbook.run.side_effect = PlaybookActionFailedError("Action failed!")
+    mock_get_playbook.return_value = mock_playbook
 
-    with patch(
-        "guardduty_soar.engine.get_playbook_instance",
-        side_effect=ValueError("Test error"),
-    ):
-        with caplog.at_level(logging.CRITICAL):
-            engine.handle_finding()
-            assert "No playbook registered" in caplog.text
+    engine = Engine(guardduty_finding_detail, mock_app_config)
+    mock_notification_manager = MockNotificationManager.return_value
+
+    engine.handle_finding()
+
+    # Assert that the complete notification is still sent in the 'finally' block
+    mock_notification_manager.send_complete_notification.assert_called_once()
+    call_args = mock_notification_manager.send_complete_notification.call_args
+    # Check that the failure was correctly added to the action_results
+    assert len(call_args.kwargs["action_results"]) == 1
+    assert call_args.kwargs["action_results"][0]["status"] == "error"

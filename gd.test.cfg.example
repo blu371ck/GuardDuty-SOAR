@@ -1,0 +1,23 @@
+# This is a configuration file for running integration tests.
+#
+# --- INSTRUCTIONS ---
+# 1. Copy this file to a new file named 'gd.test.cfg' in the same directory.
+# 2. The 'gd.test.cfg' file is ignored by Git and will NOT be committed.
+# 3. Fill in the values below with resources from your personal AWS test account.
+
+[General]
+# (STRING) - A testing subnet that is used. We cannot possibly cover every
+#            variation of VPC CIDR, child CIDR to handle this elegantly. So
+#            if you want to do integration tests, please provide a testing
+#            subnet-id.
+testing_subnet_id = subnet-1234512345
+
+[Notifications]
+# (STRING) - A verified SES email address in your test account's region.
+#            This is required to run the SES notification integration test.
+registered_email_address = your-email@test.com
+
+[EC2]
+# (STRING) - The ID of an empty security group in your test account's default VPC.
+#            This is required to run the 'isolate_instance' integration test.
+quarantine_security_group_id = sg-1234512345

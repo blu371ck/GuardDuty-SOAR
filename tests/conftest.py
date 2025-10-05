@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from guardduty_soar.config import AppConfig, get_config
+
 
 # This is a new fixture that provides a mock config object for our tests.
 @pytest.fixture
@@ -92,3 +94,13 @@ def enriched_ec2_finding(guardduty_finding_detail):
         "guardduty_finding": finding_copy,
         "instance_metadata": mock_instance_metadata,
     }
+
+
+@pytest.fixture(scope="session")
+def real_app_config() -> AppConfig:
+    """
+    Provides a real, shared AppConfig instance for the entire integration test session.
+    This reads from gd.cfg and gd.test.cfg
+    """
+
+    return get_config()

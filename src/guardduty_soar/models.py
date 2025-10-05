@@ -92,3 +92,12 @@ class MalwareScanEvent(TypedDict):
     region: str
     resources: List[str]
     detail: MalwareScanDetail
+
+
+class ActionResult(ActionResponse):
+    """
+    Extends ActionResponse to include the name of the action that was run.
+    This is used for building the summary report in notifications.
+    """
+
+    action_name: str

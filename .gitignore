@@ -11,3 +11,6 @@ wheels/
 
 .mypy_cache
 .pytest_cache
+
+# Local testing configuration file - DO NOT COMMIT
+gd.test.cfg

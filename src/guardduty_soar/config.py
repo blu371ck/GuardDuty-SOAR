@@ -6,22 +6,39 @@ from typing import List
 
 class AppConfig:
     """
-    A singleton class to handle parsing and providing access to the gd.cfg file.
+    A singleton class to handle parsing configuration from both the base
+    gd.cfg and a local gd.test.cfg for overrides.
     """
 
-    def __init__(self, config_file="gd.cfg"):
+    def __init__(self, config_file="gd.cfg", override_file="gd.test.cfg"):
         project_root = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         )
-        config_path = os.path.join(project_root, config_file)
 
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Configuration file not found at: {config_path}")
+        base_config_path = os.path.join(project_root, config_file)
+        override_config_path = os.path.join(project_root, override_file)
+
+        if not os.path.exists(base_config_path):
+            raise FileNotFoundError(
+                f"Base configuration file not found at: {base_config_path}"
+            )
 
         self._config = configparser.ConfigParser()
-        self._config.read(config_path)
+
+        # Load the base config first
+        self._config.read(base_config_path)
+
+        # Now, load the override file if it exists. Its values will take precedence.
+        if os.path.exists(override_config_path):
+            self._config.read(override_config_path)
+            print(f"Loaded integration test overrides from {override_config_path}")
 
     # --- General Section ---
+    @property
+    def testing_subnet_id(self) -> str:
+        """The subnet ID to use for launching temporary resources in integration tests."""
+        return self._config.get("General", "testing_subnet_id", fallback="")
+
     @property
     def log_level(self) -> str:
         """The log level for the application."""
