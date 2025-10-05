@@ -1,3 +1,4 @@
+import copy
 from unittest.mock import MagicMock
 
 import pytest
@@ -59,4 +60,35 @@ def valid_guardduty_event(guardduty_finding_detail):
         "region": "us-east-1",
         "resources": [],
         "detail": guardduty_finding_detail,
+    }
+
+
+@pytest.fixture
+def enriched_ec2_finding(guardduty_finding_detail):
+    """
+    Provides a reusable, enriched finding object that includes both the original
+    GuardDuty event and mock instance metadata.
+    """
+    mock_instance_metadata = {
+        "InstanceId": "i-99999999",
+        "InstanceType": "t2.micro",
+        "PublicIpAddress": "198.51.100.1",
+        "PrivateIpAddress": "10.0.0.1",
+        "VpcId": "vpc-12345678",
+        "SubnetId": "subnet-87654321",
+        "IamInstanceProfile": {
+            "Arn": "arn:aws:iam::1234567891234:instance-profile/EC2-Web-Role"
+        },
+        "Tags": [
+            {"Key": "Name", "Value": "MyWebServer"},
+            {"Key": "Environment", "Value": "Production"},
+        ],
+    }
+
+    # Use deepcopy to ensure fixtures are isolated
+    finding_copy = copy.deepcopy(guardduty_finding_detail)
+
+    return {
+        "guardduty_finding": finding_copy,
+        "instance_metadata": mock_instance_metadata,
     }

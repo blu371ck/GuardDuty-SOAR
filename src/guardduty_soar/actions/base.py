@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import Union
 
 import boto3
 
