@@ -4,7 +4,42 @@ As the deployment destination for this application is a Lambda function, there i
 
 ### EC2
 
-
+```
+DeleteQueue
+Unsubscribe
+DeleteRole
+ListAttachedRolePolicies
+DetachRolePolicy
+RemoveRoleFromInstanceProfile
+DeleteSnapshot
+DeleteInstanceProfile
+DescribeSnapshots
+DescribeInstances
+DescribeInstances
+TerminateInstances
+DescribeInstances
+ListAttachedRolePolicies
+DescribeInstances
+DescribeSnapshots
+TerminateInstances
+DescribeInstances
+CreateSnapshot
+DescribeInstances
+AttachRolePolicy
+DescribeInstances
+ModifyInstanceAttribute
+CreateTags
+DescribeInstances
+RunInstances
+DescribeInstances
+GetParameter
+Subscribe
+SetQueueAttributes
+CreateQueue
+CreateRole
+CreateInstanceProfile
+AddRoleToInstanceProfile
+```
 
 ### IAM
 
