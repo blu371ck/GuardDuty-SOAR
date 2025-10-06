@@ -1,69 +1,62 @@
 # Installation
 
-This guide will walk you through setting up the GuardDuty SOAR project for local development and testing.
+This guide will walk you through setting up the GuardDuty SOAR application for production use as a Lambda function. You can run the tests in the application as well, but we cover that all in detail in the [Broken link](broken-reference "mention") section.
 
 #### Prerequisites
 
 * Python 3.13+
-* [uv](https://github.com/astral-sh/uv): A fast Python package installer and resolver.
+* [uv](https://github.com/astral-sh/uv)
 * An AWS account with credentials configured locally.
 * AWS GuardDuty enabled.
 * For EC2, you need VPC flow logs and VPC DNS logs enabled.
+* For testing please see the testing section for required permissions and setup.
 
-#### 1. Clone the Repository
+#### Installation
 
-First, clone the project from GitHub to your local machine:
+1. Clone the repository:
 
 ```bash
-git clone [https://github.com/your-username/GuardDuty-SOAR.git](https://github.com/your-username/GuardDuty-SOAR.git)
-cd GuardDuty-SOAR
-
+git clone [https://github.com/your-username/guardduty-soar.git](https://github.com/your-username/guardduty-soar.git)
+cd guardduty-soar
 ```
 
-#### 2. Set Up the Virtual Environment
+2. Create a virtual environment:
 
-This project uses `uv` to manage its virtual environment and dependencies. This ensures that the project's packages are isolated from other Python projects on your system.
-
-From the project root directory, run:
-
-```
+```bash
 uv venv
-
 ```
 
-This will create a `.venv` directory in your project. The `uv run` command will automatically use this environment without needing manual activation.
+### Production Deployment
 
-#### 3. Install Dependencies
+The goal of a production deployment is to create a lean .zip file containing only the application code and its production dependencies, suitable for AWS Lambda.
 
-The project is defined as an editable package, with its dependencies listed in `pyproject.toml`. To install everything, run:
+1. Build the Production Artifact This process involves installing production dependencies into a temporary directory and then packaging them with your source code.
+2. Create a build directory:
 
 ```bash
-uv pip install -e ".[dev]"
-
+mkdir -p build/dist
 ```
 
-* `-e .` installs the project in "editable" mode, meaning changes you make to the source code are immediately reflected.
-* `[dev]` installs the optional development dependencies, such as `pytest` and `boto3`.
-
-#### 4. Configure Your Environment
-
-Before running the application or its tests, you need to set up the configuration.
-
-1.  **Copy the Template:** Make a copy of the example configuration file.
-
-    ```bash
-    cp gd.cfg.example gd.cfg
-
-    ```
-2. **Edit `gd.cfg`:** Open the `gd.cfg` file and fill in the required values, such as your quarantine security group ID and any notification ARNs.
-
-#### 5. Run the Test Suite
-
-To verify that your setup is correct, run the unit test suite. These tests are designed to run without needing live AWS resources.
+2. Install production dependencies: Use the requirements.txt lock file to install the exact production dependencies into a package directory.
 
 ```bash
-uv run pytest -m "not integration"
-
+uv pip install -r requirements.txt --target build/dist/package
 ```
 
-You should see all tests pass. You are now ready to start development!
+3. Copy your application code: Copy the guardduty\_soar package from the src directory into the package directory.
+
+```bash
+cp -r src/guardduty_soar build/dist/package/
+```
+
+4. Create the Lambda deployment package: Navigate into the package directory and create a .zip file of its contents.
+
+```bash
+cd build/dist/package
+zip -r ../lambda_deployment_package.zip .
+cd ../../../
+```
+
+The final artifact, <mark style="color:$primary;">`build/dist/lambda_deployment_package.zip`</mark>, is ready to be deployed.
+
+Deploying to AWS The generated <mark style="color:$primary;">`.zip`</mark> file can be deployed as an AWS Lambda function. A production deployment should be managed with an Infrastructure as Code (IaC) tool like Terraform or AWS SAM.
