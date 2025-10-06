@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "guardduty-soar"
 version = "0.1.0"
-description = "Add your description here"
+description = "A serverless SOAR framework for automated AWS GuardDuty finding remediation."
 readme = "README.md"
 authors = [
     { name = "Andrew McKenzie", email = "mckenzie.andrew@pm.me" }
@@ -11,20 +15,21 @@ dependencies = [
     "aws-lambda-powertools>=3.20.0",
     "boto3>=1.40.43",
     "boto3-stubs>=1.40.43",
+    "markdown>=3.9",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "black>=25.9.0",
-    "isort>=6.1.0",
-    "mypy>=1.18.2",
-    "pytest>=8.4.2",
-    "pytest-mock>=3.15.1",
+    "boto3-stubs[essential]",
+    "black",
+    "isort",
+    "mypy",
+    "pytest",
+    "pytest-mock"
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

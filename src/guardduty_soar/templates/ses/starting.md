@@ -1,6 +1,6 @@
 Subject: [GuardDuty-SOAR] Automated Response Started: {finding_type}
 
-An automated security playbook has been initiated in response to a GuardDuty finding.
+# An automated security playbook has been initiated in response to a GuardDuty finding.
 
 ## Finding Details:
 - __Title__: {finding_title}

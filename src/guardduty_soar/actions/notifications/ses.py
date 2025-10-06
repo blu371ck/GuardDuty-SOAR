@@ -3,7 +3,7 @@ from typing import Union
 
 import boto3
 from botocore.exceptions import ClientError
-
+import markdown
 from guardduty_soar.actions.notifications.base import BaseNotificationAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import (ActionResponse, EnrichedEC2Finding,
@@ -46,14 +46,15 @@ class SendSESNotificationAction(BaseNotificationAction):
             body = template_content
 
         template_data = self._build_template_data(data, **kwargs)
-
+        message_body = body.format(**template_data)
+        html_data = markdown.markdown(message_body)
         try:
             self.ses_client.send_email(
                 Source=self.config.registered_email_address,
                 Destination={"ToAddresses": [self.config.registered_email_address]},
                 Message={
                     "Subject": {"Data": subject.format(**template_data)},
-                    "Body": {"Text": {"Data": body.format(**template_data)}},
+                    "Body": {"Text": {"Data": message_body}, "Html": {"Data": html_data}},
                 },
             )
             details = "Successfully sent notification via SES."

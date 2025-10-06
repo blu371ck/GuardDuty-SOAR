@@ -18,7 +18,6 @@ def test_ses_action_integration(guardduty_finding_detail, real_app_config):
     This test runs the SendSESNotificationAction against the REAL AWS SES service.
     It requires a verified email address to be configured in gd.test.cfg.
     """
-    # 1. SETUP
     session = boto3.Session()
     action = SendSESNotificationAction(session, real_app_config)
 
@@ -28,14 +27,12 @@ def test_ses_action_integration(guardduty_finding_detail, real_app_config):
             "Skipping SES integration test: 'registered_email_address' is not configured in gd.test.cfg"
         )
 
-    # 2. ACT
     result = action.execute(
         guardduty_finding_detail,
         playbook_name="IntegrationTestPlaybook",
         template_type="starting",
     )
 
-    # 3. ASSERT
     assert result["status"] == "success"
     assert "Successfully sent notification via SES" in result["details"]
 

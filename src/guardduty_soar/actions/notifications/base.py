@@ -72,6 +72,7 @@ class BaseNotificationAction:
             "region": finding.get("Region", "N/A"),
             "playbook_name": kwargs.get("playbook_name", "UnknownPlaybook"),
             "console_link": f"https://{finding.get('Region', 'us-east-1')}.console.aws.amazon.com/guardduty/home?region={finding.get('Region', 'us-east-1')}#/findings?macros=current&fId={finding.get('Id', '')}",
+            "resource_id": finding.get("Resource", {}).get("InstanceDetails", {}).get("InstanceId", "N/A"),
             "instance_id": metadata.get("InstanceId", "N/A"),
             "instance_type": metadata.get("InstanceType", "N/A"),
             "public_ip": metadata.get("PublicIpAddress", "N/A"),
@@ -86,6 +87,7 @@ class BaseNotificationAction:
                 "final_status_message", "Playbook execution finished."
             ),
         }
+
         return template_data
 
     def execute(

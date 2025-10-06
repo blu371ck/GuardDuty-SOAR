@@ -182,8 +182,8 @@ def test_isolate_instance_action_integration(
             "Skipping isolate test: 'quarantine_security_group_id' is not configured in gd.test.cfg"
         )
 
-    guardduty_finding_detail["Resource"]["instanceDetails"][
-        "instanceId"
+    guardduty_finding_detail["Resource"]["InstanceDetails"][
+        "InstanceId"
     ] = temporary_ec2_instance
     session = boto3.Session(region_name=ec2_client.meta.region_name)
     action = IsolateInstanceAction(session, real_app_config)
