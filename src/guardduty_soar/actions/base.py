@@ -10,6 +10,8 @@ from guardduty_soar.models import ActionResponse, GuardDutyEvent
 logger = logging.getLogger(__name__)
 
 
+# All actions have to execute something, but require some form of
+# boto3 access as well as they need to know configurations.
 class BaseAction(ABC):
     """
     Abstract base class for all remediation actions.

@@ -15,7 +15,9 @@ dependencies = [
     "aws-lambda-powertools>=3.20.0",
     "boto3>=1.40.43",
     "boto3-stubs>=1.40.43",
+    "jinja2>=3.1.6",
     "markdown>=3.9",
+    "pydantic>=2.11.10",
 ]
 
 [project.optional-dependencies]
@@ -25,7 +27,8 @@ dev = [
     "isort",
     "mypy",
     "pytest",
-    "pytest-mock"
+    "pytest-mock",
+    "types-markdown",
 ]
 
 [tool.setuptools.packages.find]
@@ -34,5 +37,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 markers = [
-    "integration: marks tests as integration tests (requires AWS credentials)"
+    "integration: marks tests as integration tests (requires AWS credentials)",
+    "e2e: marks tests as end-to-end tests (requires AWS credentials)"
 ]

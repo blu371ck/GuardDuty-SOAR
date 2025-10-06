@@ -1,11 +1,9 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from guardduty_soar.actions.ec2.enrich import \
-    EnrichFindingWithInstanceMetadataAction
+from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
-from guardduty_soar.actions.ec2.quarantine import \
-    QuarantineInstanceProfileAction
+from guardduty_soar.actions.ec2.quarantine import QuarantineInstanceProfileAction
 from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction

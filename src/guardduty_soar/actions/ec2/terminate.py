@@ -32,7 +32,7 @@ class TerminateInstanceAction(BaseAction):
             # Return 'success' because this is an intentional stop, not an error.
             return {"status": "success", "details": details}
 
-        logger.critical(f"ACTION: Terminating instance: {instance_id}")
+        logger.warning(f"ACTION: Terminating instance: {instance_id}")
 
         try:
             self.ec2_client.terminate_instances(InstanceIds=[instance_id])

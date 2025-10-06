@@ -88,7 +88,7 @@ def test_main_handler_playbook_action_failure(
                 error_message
             )
 
-            # FIX: Explicitly target the 'main' logger to ensure the log is captured
+            # Explicitly target the 'main' logger to ensure the log is captured
             with caplog.at_level(logging.CRITICAL, logger="main"):
                 result = main(valid_guardduty_event, {})
 

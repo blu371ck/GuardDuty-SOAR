@@ -88,7 +88,9 @@ setup_logging()
 logger = logging.getLogger("main")
 
 # Load playbooks once when the lambda container starts (cold start), speeding up
-# warm invocations later.
+# warm invocations later. This may be refactored into part of the engines class.
+# With the idea that we should be able to determine and load only the necessary
+# playbook. Reducing code footprint and loading times. TODO
 load_playbooks()
 
 

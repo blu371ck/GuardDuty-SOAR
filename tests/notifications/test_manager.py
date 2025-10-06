@@ -1,63 +1,58 @@
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from guardduty_soar.notifications.manager import NotificationManager
 
 
-# We patch the concrete action classes that the manager imports and uses
-@patch("guardduty_soar.notifications.manager.SendSESNotificationAction")
-def test_manager_initialization(MockSESAction, mock_app_config):
-    """Tests that the manager initializes all its notification actions."""
-    mock_session = MagicMock()
-    manager = NotificationManager(mock_session, mock_app_config)
-
-    MockSESAction.assert_called_once_with(mock_session, mock_app_config)
-    assert manager.ses_action == MockSESAction.return_value
-
-
-@patch("guardduty_soar.notifications.manager.SendSESNotificationAction")
-def test_send_starting_notification(
-    MockSESAction, guardduty_finding_detail, mock_app_config
-):
-    """Tests that the starting notification calls the correct actions."""
-    mock_session = MagicMock()
-    manager = NotificationManager(mock_session, mock_app_config)
-    mock_ses_action_instance = MockSESAction.return_value
-
-    manager.send_starting_notification(guardduty_finding_detail, "TestPlaybook")
-
-    # Assert that the SES action's execute method was called with 'starting' params
-    mock_ses_action_instance.execute.assert_called_once_with(
-        guardduty_finding_detail, playbook_name="TestPlaybook", template_type="starting"
+def test_manager_initializes_correct_actions(mock_app_config, mocker):
+    """
+    Tests that the NotificationManager initializes only the actions
+    enabled in the application configuration.
+    """
+    # Mock the action classes
+    mock_ses = mocker.patch(
+        "guardduty_soar.notifications.manager.SendSESNotificationAction"
+    )
+    mock_sns = mocker.patch(
+        "guardduty_soar.notifications.manager.SendSNSNotificationAction"
     )
 
+    # Case 1: Both enabled
+    mock_app_config.allow_ses = True
+    mock_app_config.allow_sns = True
+    manager = NotificationManager(MagicMock(), mock_app_config)
+    assert len(manager.actions) == 2
+    mock_ses.assert_called_once()
+    mock_sns.assert_called_once()
 
-@patch("guardduty_soar.notifications.manager.SendSESNotificationAction")
-def test_send_complete_notification_with_failure(
-    MockSESAction, enriched_ec2_finding, mock_app_config
+    # Case 2: Only SES enabled
+    mock_ses.reset_mock()
+    mock_sns.reset_mock()
+    mock_app_config.allow_ses = True
+    mock_app_config.allow_sns = False
+    manager = NotificationManager(MagicMock(), mock_app_config)
+    assert len(manager.actions) == 1
+    mock_ses.assert_called_once()
+    mock_sns.assert_not_called()
+
+
+def test_manager_dispatches_to_all_actions(
+    mock_app_config, mocker, guardduty_finding_detail
 ):
     """
-    Tests that the complete notification correctly identifies a failure in the action results.
+    Tests that dispatch methods call 'execute' on all initialized action instances.
     """
-    mock_session = MagicMock()
-    manager = NotificationManager(mock_session, mock_app_config)
-    mock_ses_action_instance = MockSESAction.return_value
+    mock_app_config.allow_ses = True
+    mock_app_config.allow_sns = True
 
-    # Simulate a failed action result
-    failed_results = [
-        {"status": "error", "details": "It broke", "action_name": "Test Action"}
-    ]
+    # We don't need to patch the classes here, but their instances inside the manager
+    manager = NotificationManager(MagicMock(), mock_app_config)
 
-    manager.send_complete_notification(
-        data=enriched_ec2_finding,
-        playbook_name="TestPlaybook",
-        action_results=failed_results,
-    )
+    # Spy on the execute method of each instance
+    mocker.spy(manager.actions[0], "execute")
+    mocker.spy(manager.actions[1], "execute")
 
-    mock_ses_action_instance.execute.assert_called_once()
-    call_args = mock_ses_action_instance.execute.call_args
+    # Call a dispatch method
+    manager.send_starting_notification(guardduty_finding_detail, playbook_name="TestPB")
 
-    # Verify that the correct failure emoji and message were passed to the template data
-    assert call_args.kwargs["final_status_emoji"] == "❌"
-    assert "PLAYBOOK FAILED" in call_args.kwargs["final_status_message"]
+    assert manager.actions[0].execute.call_count == 1
+    assert manager.actions[1].execute.call_count == 1

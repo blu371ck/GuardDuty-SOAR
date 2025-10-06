@@ -29,6 +29,8 @@ class AppConfig:
         self._config.read(base_config_path)
 
         # Now, load the override file if it exists. Its values will take precedence.
+        # The override file is for test configs, which are only used in integration
+        # testing.
         if os.path.exists(override_config_path):
             self._config.read(override_config_path)
             print(f"Loaded integration test overrides from {override_config_path}")
@@ -43,7 +45,6 @@ class AppConfig:
     def log_level(self) -> str:
         """The log level for the application."""
         level = self._config.get("General", "log_level", fallback="INFO").upper()
-        # Ensure the level is a valid one before returning.
         if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             return "INFO"
         return level

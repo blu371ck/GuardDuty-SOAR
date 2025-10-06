@@ -33,7 +33,6 @@ def test_handle_finding_success(
     """
     Tests the full success path of the engine's handle_finding method.
     """
-    # 1. SETUP
     mock_playbook = MagicMock()
     mock_playbook.run.return_value = (
         [],
@@ -44,10 +43,8 @@ def test_handle_finding_success(
     engine = Engine(guardduty_finding_detail, mock_app_config)
     mock_notification_manager = MockNotificationManager.return_value
 
-    # 2. ACT
     engine.handle_finding()
 
-    # 3. ASSERT
     # Assert starting notification was sent
     mock_notification_manager.send_starting_notification.assert_called_once()
 

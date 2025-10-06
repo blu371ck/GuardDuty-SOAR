@@ -13,34 +13,37 @@ logger = logging.getLogger(__name__)
 class QuarantineInstanceProfileAction(BaseAction):
     """
     An action to quarantine an EC2 instance's IAM role by attaching a
-    'deny-all' policy to it. This effectively revokes its IAM credentials,
-    as a deny all policy trumps any underlying permissions.
+    'deny-all' policy to it. This action fetches live instance data to ensure accuracy.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
         super().__init__(session, config)
         self.iam_client = self.session.client("iam")
+        self.ec2_client = self.session.client("ec2")
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
-        # We need to check if there is an IAM instance profile first,
-        # not all EC2 instances will have an IAM instance profile attached.
-        instance_profile_details = event["Resource"]["InstanceDetails"].get(
-            "IamInstanceProfile"
-        )
-        if not instance_profile_details or "Arn" not in instance_profile_details:
-            details = (
-                "No IAM Instance Profile found on instance. Skipping role quarantine."
-            )
-            logger.warning(details)
-            return {"status": "success", "details": details}
+        instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
+        # Initialize instance_profile_arn to prevent unbound variable error.
+        instance_profile_arn = ""
 
         try:
-            # We need to extract the roles name, which is the last part of
-            # the full ARN.
-            instance_profile_arn = instance_profile_details["Arn"]
-            role_name = instance_profile_arn.split("/")[-1]
+            response = self.ec2_client.describe_instances(InstanceIds=[instance_id])
+            
+            if not response.get("Reservations") or not response["Reservations"][0].get("Instances"):
+                details = f"Instance {instance_id} not found. Skipping role quarantine."
+                logger.warning(details)
+                return {"status": "success", "details": details}
 
-            # Grab the deny policy from the configurations.
+            instance_metadata = response["Reservations"][0]["Instances"][0]
+            iam_profile = instance_metadata.get("IamInstanceProfile")
+
+            if not iam_profile or not iam_profile.get("Arn"):
+                details = f"Instance {instance_id} has no IAM instance profile. Skipping role quarantine."
+                logger.info(details)
+                return {"status": "success", "details": details}
+            
+            instance_profile_arn = iam_profile["Arn"]
+            role_name = instance_profile_arn.split("/")[-1]
             deny_policy_arn = self.config.iam_deny_all_policy_arn
 
             logger.warning(
@@ -56,16 +59,17 @@ class QuarantineInstanceProfileAction(BaseAction):
             return {"status": "success", "details": details}
 
         except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            # Check if error_code exists before deeper checks.
+            if error_code and "NotFound" in error_code:
+                 details = f"Instance {instance_id} not found. Skipping role quarantine."
+                 logger.warning(details)
+                 return {"status": "success", "details": details}
+            
             details = f"Failed to attach deny policy to role. Error: {e}."
             logger.error(details)
             return {"status": "error", "details": details}
-        except IndexError as e:
-            # In case ARN parsing fails for any reason
-            details = f"Could not parse role name from instance profile."
-            logger.error(details)
-            return {"status": "error", "details": details}
-        except Exception as e:
-            # Generic catch all.
-            details = f"An unknown error occurred: {e}."
+        except IndexError:
+            details = f"Could not parse role name from instance profile ARN: {instance_profile_arn}"
             logger.error(details)
             return {"status": "error", "details": details}

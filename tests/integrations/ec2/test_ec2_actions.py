@@ -67,6 +67,9 @@ def temporary_ec2_instance(latest_amazon_linux_ami, real_app_config, ec2_client)
     """
     Creates and tears down a temporary EC2 instance using the subnet ID from gd.test.cfg.
     """
+
+    # Integration testing is done on real components. If required real components
+    # are not provided we are simply skipping tests that require them.
     subnet_id = real_app_config.testing_subnet_id
     if not subnet_id:
         pytest.skip(
@@ -89,8 +92,11 @@ def temporary_ec2_instance(latest_amazon_linux_ami, real_app_config, ec2_client)
         waiter.wait(InstanceIds=[instance_id])
         print(f"Instance {instance_id} is running.")
 
+        # Yield allows us to get returned to when downstream steps are
+        # finished. That way we can attempt to clean up.
         yield instance_id
 
+    # Regardless of test failures/success. We must cleanup if we can.
     finally:
         if instance_id:
             print(f"\nTearing down instance {instance_id}...")
@@ -159,7 +165,10 @@ def test_isolate_instance_action_integration(
     result = action.execute(guardduty_finding_detail)
 
     assert result["status"] == "success"
+
+    # Give AWS some time to implement changes.
     time.sleep(3)
+
     response = ec2_client.describe_instances(InstanceIds=[temporary_ec2_instance])
     instance = response["Reservations"][0]["Instances"][0]
     attached_sgs = [sg["GroupId"] for sg in instance["SecurityGroups"]]
@@ -211,6 +220,7 @@ def test_iam_resources(iam_client):
     # Give AWS time for the instance profile to be ready
     time.sleep(10)
 
+    # Yield allows us to get returned to in order to properly clean up resources.
     yield {
         "role_name": role_name,
         "profile_name": profile_name,
@@ -240,34 +250,48 @@ def test_iam_resources(iam_client):
 def test_quarantine_profile_action_integration(
     guardduty_finding_detail,
     mock_app_config,
+    real_app_config,
     test_iam_resources,
     iam_client,
     sts_client,
     aws_region,
+    mocker,  # Add the pytest-mock fixture
 ):
     """
     This test runs the QuarantineInstanceProfileAction against a REAL, temporary IAM Role.
     """
-    # 1. SETUP
+    # --- Arrange ---
     role_name = test_iam_resources["role_name"]
-    deny_policy_arn = test_iam_resources["policy_arn"]
+    deny_policy_arn = real_app_config.iam_deny_all_policy_arn
+    account_id = sts_client.get_caller_identity()["Account"]
+    instance_profile_arn = f"arn:aws:iam::{account_id}:instance-profile/{role_name}"
 
     # Update the mock config to use our real, temporary deny policy
     mock_app_config.iam_deny_all_policy_arn = deny_policy_arn
 
     # Update the finding to point to our temporary role
     finding = guardduty_finding_detail
-    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"][
-        "Arn"
-    ] = f"arn:aws:iam::{sts_client.get_caller_identity()['Account']}:instance-profile/{role_name}"
+    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"]["Arn"] = instance_profile_arn
 
     session = boto3.Session(region_name=aws_region)
     action = QuarantineInstanceProfileAction(session, mock_app_config)
 
-    # 2. ACT
+    # THE FIX: Mock the ec2_client.describe_instances call within the action.
+    # We'll make it return a successful response that includes our temporary IAM profile.
+    mock_describe_response = {
+        "Reservations": [{
+            "Instances": [{
+                "InstanceId": finding["Resource"]["InstanceDetails"]["InstanceId"],
+                "IamInstanceProfile": {"Arn": instance_profile_arn}
+            }]
+        }]
+    }
+    mocker.patch.object(action.ec2_client, 'describe_instances', return_value=mock_describe_response)
+    
+    # --- Act ---
     result = action.execute(finding)
 
-    # 3. ASSERT
+    # --- Assert ---
     assert result["status"] == "success"
 
     # Verify the deny policy is now attached to the role
@@ -335,6 +359,7 @@ def test_create_snapshot_action_integration(
 
         assert guardduty_finding_detail["Id"] in snapshot["Description"]
 
+    # Regardless of test failures/success. We must cleanup if we can.
     finally:
         # --- Teardown ---
         if not created_snapshot_ids:

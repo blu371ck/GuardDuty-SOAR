@@ -6,7 +6,6 @@ import pytest
 from guardduty_soar.config import AppConfig, get_config
 
 
-# This is a new fixture that provides a mock config object for our tests.
 @pytest.fixture
 def mock_app_config():
     """Provides a mock AppConfig object with default values for testing."""
@@ -21,7 +20,6 @@ def mock_app_config():
 @pytest.fixture(scope="session")
 def guardduty_finding_detail():
     """Provides a reusable, valid GuardDuty finding 'detail' object."""
-    # Using proper casing for keys as expected by the application
     return {
         "SchemaVesion": "2.0",
         "AccountId": "1234567891234",
@@ -74,8 +72,6 @@ def enriched_ec2_finding(guardduty_finding_detail):
     mock_instance_metadata = {
         "InstanceId": "i-99999999",
         "InstanceType": "t2.micro",
-        "PublicIpAddress": "198.51.100.1",
-        "PrivateIpAddress": "10.0.0.1",
         "VpcId": "vpc-12345678",
         "SubnetId": "subnet-87654321",
         "IamInstanceProfile": {
@@ -84,6 +80,17 @@ def enriched_ec2_finding(guardduty_finding_detail):
         "Tags": [
             {"Key": "Name", "Value": "MyWebServer"},
             {"Key": "Environment", "Value": "Production"},
+        ],
+        # Nest the IP addresses inside the NetworkInterfaces list,
+        # just like the real describe_instances API response would.
+        "NetworkInterfaces": [
+            {
+                "PrivateIpAddress": "10.0.0.1",
+                "Association": {
+                    "PublicIp": "198.51.100.1",
+                    "PublicDnsName": "ec2-198-51-100-1.compute-1.amazonaws.com",
+                },
+            }
         ],
     }
 
@@ -104,3 +111,29 @@ def real_app_config() -> AppConfig:
     """
 
     return get_config()
+
+
+# Currently used for testing fallback behaviors, but will eventually add more
+# s3 testing when we get to that point of the GuardDuty findings.
+@pytest.fixture
+def s3_finding_detail():
+    """A mock GuardDuty finding for an S3 resource."""
+    return {
+        "Id": "s3-finding-id",
+        "Type": "Policy:S3/BucketPublicAccessGranted",
+        "Severity": 7,
+        "Title": "S3 bucket is publicly accessible.",
+        "Description": "An S3 bucket has been found to be publicly accessible.",
+        "AccountId": "123456789012",
+        "Region": "us-east-1",
+        "Resource": {
+            "ResourceType": "S3Bucket",
+            "S3BucketDetails": [
+                {
+                    "Arn": "arn:aws:s3:::example-bucket",
+                    "Name": "example-bucket",
+                    "Type": "S3",
+                }
+            ],
+        },
+    }

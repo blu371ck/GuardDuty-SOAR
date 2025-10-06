@@ -62,5 +62,11 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         )
 
         # Step 1: This playbook always assumes compromise, so it directly calls the
-        # inherited workflow.
-        self._run_compromise_workflow(event, self.__class__.__name__)
+        # inherited workflow. This is specifically because downstream there are event findings
+        # where the resource could be the "target" or the "actor". Depending on the situation
+        # downstream we want to either run one of two playbooks. Moving that base instance
+        # compromise workflow to the base class allows all classes to inherit it and use
+        # conditional logic to decide based on "actor" or "target" if it should run it or
+        # something else.
+        results, enriched_data = self._run_compromise_workflow(event, self.__class__.__name__)
+        return results, enriched_data

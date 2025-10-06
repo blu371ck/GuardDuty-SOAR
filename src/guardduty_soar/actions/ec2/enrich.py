@@ -5,8 +5,7 @@ from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import (ActionResponse, EnrichedEC2Finding,
-                                   GuardDutyEvent)
+from guardduty_soar.models import ActionResponse, EnrichedEC2Finding, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
 

@@ -1,100 +1,73 @@
 import logging
 import os
-from typing import Any, Dict, Union, cast
+from typing import Any, Dict, Optional, Union, cast
 
 import boto3
+import jinja2
 
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import (ActionResponse, EnrichedEC2Finding,
-                                   GuardDutyEvent)
+from guardduty_soar.models import ActionResponse, EnrichedEC2Finding, GuardDutyEvent
+from guardduty_soar.schemas import map_resource_to_model
 
 logger = logging.getLogger(__name__)
 
 
 class BaseNotificationAction:
     """
-    An abstract base class for all notification actions. It defines a common
-    interface and provides helper methods for templating.
+    An abstract base class for all notification actions, providing a common
+    interface and helper methods for templating with Jinja2.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
-        """
-        Initializes the action with a boto3 session and the application config.
-        """
+        """Initializes the action with a boto3 session, app config, and Jinja2."""
         self.session = session
         self.config = config
 
-    def _get_template(self, channel: str, template_type: str) -> str:
-        """Loads a specific template file from the filesystem."""
-        # This path navigates up from /actions/notifications/ to the project root
-        template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "templates",
-            channel,
-            f"{template_type}.md",  # Assuming .md for now
+        # This path navigates up from the relative path of here: /src/guardduty_soar/actions/notifications
+        # to the project root and then into the /templates directory.
+        package_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         )
-        try:
-            with open(template_path, "r") as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"Template not found at: {template_path}")
-            return ""
+        templates_path = os.path.join(package_dir, "templates")
+        logging.debug(f"Loaded templates in: {templates_path}.")
+        template_loader = jinja2.FileSystemLoader(searchpath=templates_path)
+        self.jinja_env = jinja2.Environment(loader=template_loader, autoescape=True)
 
-    def _build_template_data(
+    def _render_template(self, channel: str, template_name: str, context: dict) -> str:
+        """Renders a Jinja2 template for a specific channel."""
+        full_template_path = f"{channel}/{template_name}"
+        template = self.jinja_env.get_template(full_template_path)
+        logging.debug(f"Jinja loaded templates in: {full_template_path}.")
+        return template.render(context)
+
+    def _build_template_context(
         self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
     ) -> Dict[str, Any]:
-        """
-        Creates a dictionary of values to populate templates, handling both basic
-        and enriched finding data structures.
-        """
-        # This check is now type-safe because the execute method's signature allows for the Union
-        if isinstance(data, dict) and "guardduty_finding" in data:
+        """Creates a structured context dictionary for the templating engine."""
+        instance_metadata: Optional[Dict[str, Any]] = None
+        finding: GuardDutyEvent
+        logger.info("Building template context for messaging.")
+        # Use 'cast' to explicitly narrow the type for Mypy or it produces
+        # an error.
+        if "guardduty_finding" in data:
             enriched_data = cast(EnrichedEC2Finding, data)
             finding = enriched_data["guardduty_finding"]
-            metadata = enriched_data.get("instance_metadata", {})
+            instance_metadata = enriched_data.get("instance_metadata")
         else:
-            finding = data
-            metadata = {}
+            finding = cast(GuardDutyEvent, data)
 
-        instance_tags = metadata.get("Tags", [])
-        formatted_tags = (
-            ", ".join([f"{tag['Key']}={tag['Value']}" for tag in instance_tags])
-            or "N/A"
+        resource_details_model = map_resource_to_model(
+            finding.get("Resource", {}), instance_metadata=instance_metadata
         )
 
-        template_data = {
-            "finding_id": finding.get("Id", "N/A"),
-            "finding_type": finding.get("Type", "N/A"),
-            "finding_title": finding.get("Title", "N/A"),
-            "finding_severity": finding.get("Severity", "N/A"),
-            "finding_description": finding.get("Description", "N/A"),
-            "account_id": finding.get("AccountId", "N/A"),
-            "region": finding.get("Region", "N/A"),
+        return {
+            "finding": finding,
             "playbook_name": kwargs.get("playbook_name", "UnknownPlaybook"),
-            "console_link": f"https://{finding.get('Region', 'us-east-1')}.console.aws.amazon.com/guardduty/home?region={finding.get('Region', 'us-east-1')}#/findings?macros=current&fId={finding.get('Id', '')}",
-            "resource_id": finding.get("Resource", {}).get("InstanceDetails", {}).get("InstanceId", "N/A"),
-            "instance_id": metadata.get("InstanceId", "N/A"),
-            "instance_type": metadata.get("InstanceType", "N/A"),
-            "public_ip": metadata.get("PublicIpAddress", "N/A"),
-            "private_ip": metadata.get("PrivateIpAddress", "N/A"),
-            "vpc_id": metadata.get("VpcId", "N/A"),
-            "subnet_id": metadata.get("SubnetId", "N/A"),
-            "iam_profile": metadata.get("IamInstanceProfile", {}).get("Arn", "N/A"),
-            "instance_tags": formatted_tags,
-            "final_status_emoji": kwargs.get("final_status_emoji", ""),
-            "actions_summary": kwargs.get("actions_summary", "No actions were taken."),
-            "final_status_message": kwargs.get(
-                "final_status_message", "Playbook execution finished."
-            ),
+            "resource": resource_details_model,
+            "completion_details": kwargs,
         }
-
-        return template_data
 
     def execute(
         self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
     ) -> ActionResponse:
-        """
-        The main entry point for the action. Each child notification class
-        MUST implement this method.
-        """
         raise NotImplementedError

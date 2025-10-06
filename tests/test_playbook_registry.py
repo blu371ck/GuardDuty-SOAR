@@ -31,7 +31,7 @@ def test_register_playbook():
     assert _PLAYBOOK_REGISTRY["FindingTypeA"] == MockPlaybook
 
 
-def test_get_playbook_instance_success(mock_app_config):  # <-- Add fixture
+def test_get_playbook_instance_success(mock_app_config):
     """Tests that the correct playbook instance is returned for a registered type."""
     register_playbook("FindingTypeA")(MockPlaybook)
 
@@ -42,7 +42,7 @@ def test_get_playbook_instance_success(mock_app_config):  # <-- Add fixture
     assert instance.config == mock_app_config  # Verify config was injected
 
 
-def test_get_playbook_instance_failure(mock_app_config):  # <-- Add fixture
+def test_get_playbook_instance_failure(mock_app_config):
     """Tests that a ValueError is raised for an unregistered finding type."""
     with pytest.raises(
         ValueError, match="No playbook registered for finding type: UnregisteredType"

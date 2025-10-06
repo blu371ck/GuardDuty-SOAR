@@ -6,8 +6,7 @@ import boto3
 
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import (ActionResult, EnrichedEC2Finding,
-                                   GuardDutyEvent)
+from guardduty_soar.models import ActionResult, EnrichedEC2Finding, GuardDutyEvent
 from guardduty_soar.notifications.manager import NotificationManager
 from guardduty_soar.playbook_registry import get_playbook_instance
 
