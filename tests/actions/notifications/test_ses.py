@@ -30,7 +30,7 @@ def test_ses_action_sends_starting_notification(
             "Subject": {
                 "Data": "[SOAR] Response Started: UnauthorizedAccess:EC2/TorClient"
             },
-            "Body": {"Text": {"Data": ANY}},
+            "Body": {"Text": {"Data": ANY}, "Html": {"Data": ANY}},
         },
     }
     # FIX 1: Provide a valid mock response that includes the required MessageId
@@ -72,7 +72,10 @@ def test_ses_action_sends_complete_notification(enriched_ec2_finding, mock_app_c
                 "Data": "✅ [SOAR] Response Complete: UnauthorizedAccess:EC2/TorClient"
             },
             "Body": {
-                "Text": {"Data": "\nInstance ID: i-99999999\nPublic IP: 198.51.100.1"}
+                "Text": {"Data": "\nInstance ID: i-99999999\nPublic IP: 198.51.100.1"},
+                "Html": {
+                    "Data": "<p>Instance ID: i-99999999\nPublic IP: 198.51.100.1</p>"
+                },
             },
         },
     }

@@ -2,9 +2,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from guardduty_soar.playbook_registry import (_PLAYBOOK_REGISTRY, BasePlaybook,
-                                              get_playbook_instance,
-                                              register_playbook)
+from guardduty_soar.playbook_registry import (
+    _PLAYBOOK_REGISTRY,
+    BasePlaybook,
+    get_playbook_instance,
+    register_playbook,
+)
 
 
 # A simple mock playbook for testing

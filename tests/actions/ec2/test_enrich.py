@@ -4,8 +4,7 @@ import boto3
 import pytest
 from botocore.stub import Stubber
 
-from guardduty_soar.actions.ec2.enrich import \
-    EnrichFindingWithInstanceMetadataAction
+from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.models import EnrichedEC2Finding
 
 
