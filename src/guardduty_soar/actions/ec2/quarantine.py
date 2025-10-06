@@ -28,8 +28,10 @@ class QuarantineInstanceProfileAction(BaseAction):
 
         try:
             response = self.ec2_client.describe_instances(InstanceIds=[instance_id])
-            
-            if not response.get("Reservations") or not response["Reservations"][0].get("Instances"):
+
+            if not response.get("Reservations") or not response["Reservations"][0].get(
+                "Instances"
+            ):
                 details = f"Instance {instance_id} not found. Skipping role quarantine."
                 logger.warning(details)
                 return {"status": "success", "details": details}
@@ -41,7 +43,7 @@ class QuarantineInstanceProfileAction(BaseAction):
                 details = f"Instance {instance_id} has no IAM instance profile. Skipping role quarantine."
                 logger.info(details)
                 return {"status": "success", "details": details}
-            
+
             instance_profile_arn = iam_profile["Arn"]
             role_name = instance_profile_arn.split("/")[-1]
             deny_policy_arn = self.config.iam_deny_all_policy_arn
@@ -62,10 +64,10 @@ class QuarantineInstanceProfileAction(BaseAction):
             error_code = e.response.get("Error", {}).get("Code")
             # Check if error_code exists before deeper checks.
             if error_code and "NotFound" in error_code:
-                 details = f"Instance {instance_id} not found. Skipping role quarantine."
-                 logger.warning(details)
-                 return {"status": "success", "details": details}
-            
+                details = f"Instance {instance_id} not found. Skipping role quarantine."
+                logger.warning(details)
+                return {"status": "success", "details": details}
+
             details = f"Failed to attach deny policy to role. Error: {e}."
             logger.error(details)
             return {"status": "error", "details": details}

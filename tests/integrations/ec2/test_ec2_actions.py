@@ -271,7 +271,9 @@ def test_quarantine_profile_action_integration(
 
     # Update the finding to point to our temporary role
     finding = guardduty_finding_detail
-    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"]["Arn"] = instance_profile_arn
+    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"][
+        "Arn"
+    ] = instance_profile_arn
 
     session = boto3.Session(region_name=aws_region)
     action = QuarantineInstanceProfileAction(session, mock_app_config)
@@ -279,15 +281,23 @@ def test_quarantine_profile_action_integration(
     # THE FIX: Mock the ec2_client.describe_instances call within the action.
     # We'll make it return a successful response that includes our temporary IAM profile.
     mock_describe_response = {
-        "Reservations": [{
-            "Instances": [{
-                "InstanceId": finding["Resource"]["InstanceDetails"]["InstanceId"],
-                "IamInstanceProfile": {"Arn": instance_profile_arn}
-            }]
-        }]
+        "Reservations": [
+            {
+                "Instances": [
+                    {
+                        "InstanceId": finding["Resource"]["InstanceDetails"][
+                            "InstanceId"
+                        ],
+                        "IamInstanceProfile": {"Arn": instance_profile_arn},
+                    }
+                ]
+            }
+        ]
     }
-    mocker.patch.object(action.ec2_client, 'describe_instances', return_value=mock_describe_response)
-    
+    mocker.patch.object(
+        action.ec2_client, "describe_instances", return_value=mock_describe_response
+    )
+
     # --- Act ---
     result = action.execute(finding)
 

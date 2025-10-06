@@ -68,5 +68,7 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         # compromise workflow to the base class allows all classes to inherit it and use
         # conditional logic to decide based on "actor" or "target" if it should run it or
         # something else.
-        results, enriched_data = self._run_compromise_workflow(event, self.__class__.__name__)
+        results, enriched_data = self._run_compromise_workflow(
+            event, self.__class__.__name__
+        )
         return results, enriched_data

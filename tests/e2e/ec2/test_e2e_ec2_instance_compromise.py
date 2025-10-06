@@ -3,9 +3,9 @@ import time
 
 import boto3
 import pytest
-
-from guardduty_soar.main import main  
 from botocore.exceptions import ClientError
+
+from guardduty_soar.main import main
 
 pytestmark = pytest.mark.e2e  # Mark all tests in this file as 'e2e'
 
@@ -77,6 +77,7 @@ The test follows a setup -> execute -> assert -> teardown pattern managed by the
         - The SQS queue and its SNS subscription are removed.
 """
 
+
 @pytest.fixture(scope="module")
 def e2e_test_resources(real_app_config):
     """
@@ -89,7 +90,7 @@ def e2e_test_resources(real_app_config):
     ssm_client = session.client("ssm")
 
     print("\nSetting up E2E test resources...")
-    
+
     # Need to perform setup.
     # Create an SQS queue to receive SNS notifications for verification
     queue_name = f"gd-soar-e2e-test-queue-{int(time.time())}"
@@ -101,20 +102,21 @@ def e2e_test_resources(real_app_config):
 
     policy = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "AllowSNSToSendMessages",
-            "Effect": "Allow",
-            "Principal": {"Service": "sns.amazonaws.com"},
-            "Action": "SQS:SendMessage",
-            "Resource": queue_arn,
-            "Condition": {
-                "ArnEquals": {"aws:SourceArn": real_app_config.sns_topic_arn}
+        "Statement": [
+            {
+                "Sid": "AllowSNSToSendMessages",
+                "Effect": "Allow",
+                "Principal": {"Service": "sns.amazonaws.com"},
+                "Action": "SQS:SendMessage",
+                "Resource": queue_arn,
+                "Condition": {
+                    "ArnEquals": {"aws:SourceArn": real_app_config.sns_topic_arn}
+                },
             }
-        }]
+        ],
     }
     sqs_client.set_queue_attributes(
-        QueueUrl=queue_url,
-        Attributes={'Policy': json.dumps(policy)}
+        QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)}
     )
     print("Successfully attached SQS queue policy.")
 
@@ -124,19 +126,23 @@ def e2e_test_resources(real_app_config):
         Protocol="sqs",
         Endpoint=queue_arn,
         ReturnSubscriptionArn=True,
-        Attributes={'RawMessageDelivery': 'true'}
+        Attributes={"RawMessageDelivery": "true"},
     )
 
     try:
-        ssm_param_name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-        latest_ami_id = ssm_client.get_parameter(Name=ssm_param_name)["Parameter"]["Value"]
+        ssm_param_name = (
+            "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+        )
+        latest_ami_id = ssm_client.get_parameter(Name=ssm_param_name)["Parameter"][
+            "Value"
+        ]
         print(f"Found latest image: {latest_ami_id}.")
     except ClientError as e:
         pytest.fail(f"Could not find latest image: {e}.")
 
     # Launch a test EC2 instance
     instance = ec2_client.run_instances(
-        ImageId=latest_ami_id,  
+        ImageId=latest_ami_id,
         InstanceType="t3.micro",
         SubnetId=real_app_config.testing_subnet_id,
         MinCount=1,
@@ -233,24 +239,31 @@ def test_ec2_tor_client_playbook_e2e(
         messages = sqs_client.receive_message(
             QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=2
         ).get("Messages", [])
-        
+
         if messages:
             all_messages.extend(messages)
             # Delete messages after receiving them
-            entries = [{'Id': msg['MessageId'], 'ReceiptHandle': msg['ReceiptHandle']} for msg in messages]
+            entries = [
+                {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]}
+                for msg in messages
+            ]
             sqs_client.delete_message_batch(QueueUrl=queue_url, Entries=entries)
-        
+
         if len(all_messages) >= 2:
-            break # Exit loop once we have our messages
-        
-        time.sleep(1) # Small delay between polls
-    
+            break  # Exit loop once we have our messages
+
+        time.sleep(1)  # Small delay between polls
+
     # Final assertion on the number of messages found
-    assert len(all_messages) >= 2, "Did not receive the expected number of notifications."
+    assert (
+        len(all_messages) >= 2
+    ), "Did not receive the expected number of notifications."
     print(f"✅ Received {len(all_messages)} messages from SQS.")
-    
+
     # Verify the content of the completion message
-    complete_message_body = [json.loads(m["Body"]) for m in all_messages if "playbook_completed" in m["Body"]][0]
+    complete_message_body = [
+        json.loads(m["Body"]) for m in all_messages if "playbook_completed" in m["Body"]
+    ][0]
     assert complete_message_body["status_message"] == "Playbook completed successfully."
     assert complete_message_body["resource"]["instance_id"] == instance_id
     print("✅ SNS notifications were successfully verified.")
