@@ -88,10 +88,36 @@ def e2e_test_resources(real_app_config):
     sqs_client = session.client("sqs")
     sns_client = session.client("sns")
     ssm_client = session.client("ssm")
+    iam_client = session.client("iam")
 
     print("\nSetting up E2E test resources...")
 
     # Need to perform setup.
+    role_name = f"gd-soar-e2e-test-role-{int(time.time())}"
+    profile_name = role_name  # Keep names the same for simplicity
+
+    # A trust policy that allows EC2 to assume this role
+    assume_role_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "ec2.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+    iam_client.create_role(
+        RoleName=role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
+    )
+    iam_client.create_instance_profile(InstanceProfileName=profile_name)
+    iam_client.add_role_to_instance_profile(
+        InstanceProfileName=profile_name, RoleName=role_name
+    )
+    print(f"Created temporary IAM role and profile: {role_name}")
+    # Small delay to ensure the instance profile is available
+    time.sleep(10)
+
     # Create an SQS queue to receive SNS notifications for verification
     queue_name = f"gd-soar-e2e-test-queue-{int(time.time())}"
     queue_res = sqs_client.create_queue(QueueName=queue_name)
@@ -147,6 +173,7 @@ def e2e_test_resources(real_app_config):
         SubnetId=real_app_config.testing_subnet_id,
         MinCount=1,
         MaxCount=1,
+        IamInstanceProfile={"Name": profile_name},
     )["Instances"][0]
     instance_id = instance["InstanceId"]
 
@@ -157,6 +184,8 @@ def e2e_test_resources(real_app_config):
 
     resource_ids = {
         "instance_id": instance_id,
+        "role_name": role_name,
+        "profile_name": profile_name,
         "queue_url": queue_url,
         "subscription_arn": sub_res["SubscriptionArn"],
     }
@@ -179,6 +208,19 @@ def e2e_test_resources(real_app_config):
         ec2_client.delete_snapshot(SnapshotId=snap["SnapshotId"])
         print(f"Deleted snapshot {snap['SnapshotId']}.")
 
+    iam_client.remove_role_from_instance_profile(
+        InstanceProfileName=profile_name, RoleName=role_name
+    )
+    iam_client.delete_instance_profile(InstanceProfileName=profile_name)
+    # Detach any policies before deleting role
+    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name).get(
+        "AttachedPolicies", []
+    )
+    for policy in attached_policies:
+        iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
+    iam_client.delete_role(RoleName=role_name)
+    print("Cleaned up IAM role and profile.")
+
     sns_client.unsubscribe(SubscriptionArn=sub_res["SubscriptionArn"])
     sqs_client.delete_queue(QueueUrl=queue_url)
     print("Cleaned up SQS queue and SNS subscription.")
@@ -197,7 +239,6 @@ def test_ec2_tor_client_playbook_e2e(
     instance_id = e2e_test_resources["instance_id"]
     queue_url = e2e_test_resources["queue_url"]
 
-    # --- 2. ARRANGE & ACT ---
     print(f"Starting E2E test for instance {instance_id}...")
 
     # Modify the GuardDuty event to point to our live test instance
@@ -212,7 +253,6 @@ def test_ec2_tor_client_playbook_e2e(
     # Give the playbook a few seconds to complete actions
     time.sleep(10)
 
-    # --- 3. ASSERT ---
     print("Verifying final state...")
 
     # Verify the instance was isolated
@@ -230,7 +270,16 @@ def test_ec2_tor_client_playbook_e2e(
     assert len(snapshots) > 0
     print(f"✅ Snapshot {snapshots[0]['SnapshotId']} was successfully created.")
 
-    # THE FIX: Poll the SQS queue in a loop to reliably receive async messages.
+    role_name = e2e_test_resources["role_name"]
+    iam_client = session.client("iam")
+    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
+        "AttachedPolicies"
+    ]
+    attached_arns = [p["PolicyArn"] for p in attached_policies]
+    assert real_app_config.iam_deny_all_policy_arn in attached_arns
+    print(f"✅ IAM role {role_name} was successfully quarantined.")
+
+    # Poll the SQS queue in a loop to reliably receive async messages.
     all_messages = []
     timeout_seconds = 20
     start_time = time.time()
@@ -265,5 +314,8 @@ def test_ec2_tor_client_playbook_e2e(
         json.loads(m["Body"]) for m in all_messages if "playbook_completed" in m["Body"]
     ][0]
     assert complete_message_body["status_message"] == "Playbook completed successfully."
-    assert complete_message_body["resource"]["instance_id"] == instance_id
-    print("✅ SNS notifications were successfully verified.")
+
+    resource_details = complete_message_body["resource"]
+    assert resource_details["instance_id"] == instance_id
+    assert resource_details.get("vpc_id") is not None
+    print("✅ SNS notifications were contain enriched data (VPC ID).")
