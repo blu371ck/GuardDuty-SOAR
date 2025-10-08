@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from guardduty_soar.actions.ec2.block import BlockMaliciousIpAction
 from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import QuarantineInstanceProfileAction
@@ -39,6 +40,7 @@ class EC2BasePlaybook(BasePlaybook):
             self.session, self.config
         )
         self.terminate_instance = TerminateInstanceAction(self.session, self.config)
+        self.block_ip = BlockMaliciousIpAction(self.session, self.config)
 
     def _run_compromise_workflow(
         self, event: GuardDutyEvent, playbook_name: str

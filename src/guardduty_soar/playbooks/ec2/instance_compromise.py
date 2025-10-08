@@ -1,7 +1,7 @@
 import logging
+from typing import Any, Dict, List, Optional, Tuple
 
-from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
@@ -56,7 +56,9 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
     compromised EC2 instance.
     """
 
-    def run(self, event: GuardDutyEvent):
+    def run(
+        self, event: GuardDutyEvent
+    ) -> Tuple[List[ActionResult], Optional[Dict[str, Any]]]:
         logger.info(
             f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['InstanceId']}"
         )

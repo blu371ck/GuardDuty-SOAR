@@ -14,3 +14,6 @@ wheels/
 
 # Local testing configuration file - DO NOT COMMIT
 gd.test.cfg
+
+# File I am using for permissions used as a general place-holder document
+general.txt

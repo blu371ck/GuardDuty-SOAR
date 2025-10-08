@@ -102,14 +102,6 @@ class AppConfig:
     def sns_topic_arn(self) -> str:
         return self._config.get("Notifications", "sns_topic_arn")
 
-    @property
-    def allow_chatbot(self) -> bool:
-        return self._config.getboolean("Notifications", "allow_chatbot", fallback=False)
-
-    @property
-    def chatbot_sns_topic_arn(self) -> str:
-        return self._config.get("Notifications", "chatbot_sns_topic_arn")
-
     def __repr__(self) -> str:
         """Provides a developer-friendly string representation of the config."""
         props = ", ".join(

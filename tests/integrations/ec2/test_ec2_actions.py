@@ -5,6 +5,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 
+from guardduty_soar.actions.ec2.block import BlockMaliciousIpAction
 from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import QuarantineInstanceProfileAction
@@ -109,6 +110,65 @@ def temporary_ec2_instance(latest_amazon_linux_ami, real_app_config, ec2_client)
                 print(
                     f"Could not terminate instance {instance_id}. Manual cleanup may be required. Error: {e}"
                 )
+
+
+@pytest.fixture
+def test_nacl_resources(aws_region, ec2_client):
+    """
+    Creates a temporary VPC, Subnet, and Identifies the default NACL for testing.
+    Cleans up all resources afterwards.
+    """
+
+    print("\nSetting up temporary VPC for NACL integration test...")
+    vpc = ec2_client.create_vpc(CidrBlock="10.1.0.0/16")
+    vpc_id = vpc["Vpc"]["VpcId"]
+
+    subnet = ec2_client.create_subnet(VpcId=vpc_id, CidrBlock="10.1.1.0/24")
+    subnet_id = subnet["Subnet"]["SubnetId"]
+
+    # Grab the default NACL
+    nacl = ec2_client.describe_network_acls(
+        Filters=[
+            {"Name": "vpc-id", "Values": [vpc_id]},
+            {"Name": "default", "Values": ["true"]},
+        ]
+    )["NetworkAcls"][0]
+    nacl_id = nacl["NetworkAclId"]
+
+    resources = {"vpc_id": vpc_id, "subnet_id": subnet_id, "nacl_id": nacl_id}
+
+    yield resources
+
+    # --- Teardown ---
+    print(f"\nTearing down temporary VPC {vpc_id}...")
+    try:
+        ec2_client.delete_subnet(SubnetId=subnet_id)
+        ec2_client.delete_vpc(VpcId=vpc_id)
+    except ClientError as e:
+        print(
+            f"Error during teardown (resources may already be gone), may need manual inspection: {e}."
+        )
+
+
+@pytest.fixture
+def port_probe_finding():
+    """A mock GuardDuty finding for a port probe event."""
+    return {
+        "Resource": {
+            "InstanceDetails": {"NetworkInterfaces": [{"SubnetId": "subnet-12345678"}]}
+        },
+        "Service": {
+            "Action": {
+                "NetworkConnectionAction": {
+                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
+                }
+            }
+        },
+        "AccountId": "123456789012",
+        "Region": "us-east-1",
+        "Type": "Recon:EC2/PortProbeUnprotectedPort",
+        "Id": "port-probe-finding-id",
+    }
 
 
 def test_tag_instance_action_integration(
@@ -472,3 +532,47 @@ def test_terminate_instance_action_integration(
         else:
             # Re-raise any other API errors
             raise e
+
+
+def test_block_malicious_ip_integration(
+    port_probe_finding, test_nacl_resources, real_app_config, aws_region, ec2_client
+):
+    """
+    Tests that the BlockMaliciousIpAction can successfully find a NACL and add
+    inbound/outbound deny rules.
+    """
+    subnet_id = test_nacl_resources["subnet_id"]
+    nacl_id = test_nacl_resources["nacl_id"]
+    malicious_ip = "198.51.100.5"
+
+    # Assign our newly created items to the findings details.
+    finding = port_probe_finding
+    finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0][
+        "SubnetId"
+    ] = subnet_id
+    finding["Service"]["Action"]["NetworkConnectionAction"]["RemoteIpDetails"][
+        "IpAddressV4"
+    ] = malicious_ip
+
+    session = boto3.Session(region_name=aws_region)
+    action = BlockMaliciousIpAction(session, real_app_config)
+
+    result = action.execute(finding)
+
+    assert result["status"] == "success"
+
+    updated_nacl = ec2_client.describe_network_acls(NetworkAclIds=[nacl_id])[
+        "NetworkAcls"
+    ][0]
+    new_rules = [
+        entry
+        for entry in updated_nacl["Entries"]
+        if entry["RuleAction"] == "deny" and entry["CidrBlock"] == f"{malicious_ip}/32"
+    ]
+
+    # Check to make sure both ingress and egress have rules.
+    assert len(new_rules) == 2
+    assert any(rule["Egress"] is False for rule in new_rules)
+    assert any(rule["Egress"] is True for rule in new_rules)
+
+    print(f"\nSuccessfully verified deny rules were added to NACL {nacl_id}.")
