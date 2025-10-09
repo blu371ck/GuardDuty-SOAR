@@ -1,5 +1,5 @@
 import copy
-import json
+import logging
 import time
 from dataclasses import replace
 
@@ -10,6 +10,7 @@ from guardduty_soar import main
 
 pytestmark = pytest.mark.e2e
 
+logger = logging.getLogger(__name__)
 
 def test_ec2_brute_force_playbook_e2e_as_target(
     temporary_ec2_instance,
@@ -50,12 +51,12 @@ def test_ec2_brute_force_playbook_e2e_as_target(
         "RemoteIpDetails"
     ]["IpAddressV4"] = malicious_ip
 
-    print(f"\nStarting E2E test for Brute Force (TARGET) on instance {instance_id}...")
+    logger.info(f"Starting E2E test for Brute Force (TARGET) on instance {instance_id}...")
     response = main.handler(test_event, {})
     assert response["statusCode"] == 200
     time.sleep(5)
 
-    print("Verifying final state for TARGET path...")
+    logger.info("Verifying final state for TARGET path...")
     # Verify tagging
     tags = {
         t["Key"]: t["Value"]
@@ -64,7 +65,7 @@ def test_ec2_brute_force_playbook_e2e_as_target(
         )["Tags"]
     }
     assert "SOAR-Status" in tags
-    print("✅ Instance was successfully tagged.")
+    logger.info("Instance was successfully tagged.")
 
     # Verify NACL block
     updated_nacl = ec2_client.describe_network_acls(NetworkAclIds=[nacl_id])[
@@ -76,11 +77,11 @@ def test_ec2_brute_force_playbook_e2e_as_target(
         if e["RuleAction"] == "deny" and e["CidrBlock"] == f"{malicious_ip}/32"
     ]
     assert len(deny_rules) == 2
-    print(f"✅ Malicious IP {malicious_ip} was successfully blocked.")
+    logger.info(f"Malicious IP {malicious_ip} was successfully blocked.")
 
     # Verify notifications
     sqs_poller(queue_url=queue_url, expected_count=2)
-    print("✅ SNS notifications were successfully verified.")
+    logger.info("SNS notifications were successfully verified.")
 
 
 def test_ec2_brute_force_playbook_e2e_as_source(
@@ -114,18 +115,18 @@ def test_ec2_brute_force_playbook_e2e_as_source(
     test_event["detail"]["Service"]["ResourceRole"] = "SOURCE"
     test_event["detail"]["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    print(f"\nStarting E2E test for Brute Force (SOURCE) on instance {instance_id}...")
+    logger.info(f"Starting E2E test for Brute Force (SOURCE) on instance {instance_id}...")
     response = main.handler(test_event, {})
     assert response["statusCode"] == 200
 
-    print("Verifying final state for SOURCE path...")
+    logger.info("Verifying final state for SOURCE path...")
 
     # Verify snapshot was created (artifact of compromise workflow)
     snapshots = ec2_client.describe_snapshots(
         Filters=[{"Name": "description", "Values": [f"*{instance_id}*"]}]
     )["Snapshots"]
     assert len(snapshots) > 0
-    print("✅ Snapshot was successfully created.")
+    logger.info("Snapshot was successfully created.")
 
     # Verify IAM role was quarantined (artifact of compromise workflow)
     attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
@@ -133,8 +134,8 @@ def test_ec2_brute_force_playbook_e2e_as_source(
     ]
     attached_arns = [p["PolicyArn"] for p in attached_policies]
     assert real_app_config.iam_deny_all_policy_arn in attached_arns
-    print("✅ IAM role was successfully quarantined.")
+    logger.info("IAM role was successfully quarantined.")
 
     # Verify notifications
     sqs_poller(queue_url=queue_url, expected_count=2)
-    print("✅ SNS notifications were successfully verified.")
+    logger.info("SNS notifications were successfully verified.")
