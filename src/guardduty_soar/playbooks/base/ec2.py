@@ -5,6 +5,7 @@ from guardduty_soar.actions.ec2.block import BlockMaliciousIpAction
 from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
 from guardduty_soar.actions.ec2.quarantine import QuarantineInstanceProfileAction
+from guardduty_soar.actions.ec2.remove import RemovePublicAccessAction
 from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction
@@ -41,6 +42,7 @@ class EC2BasePlaybook(BasePlaybook):
         )
         self.terminate_instance = TerminateInstanceAction(self.session, self.config)
         self.block_ip = BlockMaliciousIpAction(self.session, self.config)
+        self.remove_rule = RemovePublicAccessAction(self.session, self.config)
 
     def _run_compromise_workflow(
         self, event: GuardDutyEvent, playbook_name: str

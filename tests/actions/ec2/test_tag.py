@@ -4,7 +4,6 @@ import boto3
 from botocore.stub import ANY, Stubber
 
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
-from guardduty_soar.config import AppConfig
 
 
 def test_tag_instance_action_success(guardduty_finding_detail, mock_app_config):

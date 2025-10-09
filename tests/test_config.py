@@ -1,5 +1,3 @@
-import configparser
-import os
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -7,56 +5,66 @@ import pytest
 from guardduty_soar.config import AppConfig, get_config
 
 
-def test_config_loading_success():
+def test_config_loading_success(mocker):
     """
-    Tests that AppConfig correctly parses a valid config file.
-    We use mock_open to simulate the file existing.
+    Tests that get_config() correctly parses a valid config file.
     """
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    # Temporarily remove any real environment variables that could interfere.
+    mocker.patch.dict("os.environ", clear=True)
+
     mock_config_content = """
 [General]
 log_level = DEBUG
-
 [EC2]
 allow_terminate = no
 ignored_findings =
     Recon:EC2/PortProbeUnprotectedPort
-    Stealth:EC2/VPCAcccess
-
 [Notifications]
 allow_ses = true
     """
-
-    # We patch 'builtins.open' to simulate reading our mock config content
     with patch("builtins.open", mock_open(read_data=mock_config_content)):
-        # We also need to patch os.path.exists to return True
         with patch("os.path.exists", return_value=True):
-            # Clear the cache for get_config to ensure a fresh instance is created
             get_config.cache_clear()
-            config = AppConfig(config_file="dummy/path/gd.cfg")
+            config = get_config()
 
             assert config.log_level == "DEBUG"
             assert config.allow_terminate is False
             assert config.allow_ses is True
-            assert "Recon:EC2/PortProbeUnprotectedPort" in config.ec2_ignored_findings
 
 
-def test_config_invalid_log_level_defaults_to_info():
+def test_config_fallback_values(mocker):
     """
-    Tests that an invalid log level in the config defaults to INFO.
+    Tests that get_config() uses fallback values for missing keys.
     """
-    mock_config_content = "[General]\nlog_level = INVALID"
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    # Ensure a clean environment for this test too.
+    mocker.patch.dict("os.environ", clear=True)
+
+    mock_config_content = "[General]\nlog_level = INFO"
+
     with patch("builtins.open", mock_open(read_data=mock_config_content)):
         with patch("os.path.exists", return_value=True):
             get_config.cache_clear()
-            config = AppConfig()
-            assert config.log_level == "INFO"
+            config = get_config()
+
+            # This should correctly use the fallback of False
+            assert config.allow_sns is False
 
 
-def test_config_file_not_found():
+def test_config_handles_missing_file_gracefully(mocker):
     """
-    Tests that AppConfig raises a FileNotFoundError if the config file is missing.
+    Tests that get_config() returns a default AppConfig object
+    when no files or environment variables are present.
     """
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    # Ensure a completely empty environment for this test.
+    mocker.patch.dict("os.environ", clear=True)
+
     with patch("os.path.exists", return_value=False):
-        with pytest.raises(FileNotFoundError):
-            get_config.cache_clear()
-            AppConfig()
+        get_config.cache_clear()
+        config = get_config()
+
+        assert isinstance(config, AppConfig)
+        # This should now correctly use the fallback of "INFO"
+        assert config.log_level == "INFO"

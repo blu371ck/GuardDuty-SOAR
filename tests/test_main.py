@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.main import main, setup_logging
+from guardduty_soar.main import handler, setup_logging
 
 
 def test_setup_logging(mock_app_config):
@@ -49,7 +49,7 @@ def test_main_handler_success(valid_guardduty_event, mock_app_config):
     with patch("guardduty_soar.main.get_config", return_value=mock_app_config):
         with patch("guardduty_soar.main.Engine") as MockEngine:
             mock_engine_instance = MockEngine.return_value
-            result = main(valid_guardduty_event, {})
+            result = handler(valid_guardduty_event, {})
 
             assert result["statusCode"] == 200
             MockEngine.assert_called_once_with(
@@ -67,7 +67,7 @@ def test_main_handler_engine_failure(valid_guardduty_event, mock_app_config, cap
         with patch("guardduty_soar.main.Engine", side_effect=ValueError(error_message)):
             # Explicitly target the 'main' logger to ensure capture
             with caplog.at_level(logging.ERROR, logger="main"):
-                result = main(valid_guardduty_event, {})
+                result = handler(valid_guardduty_event, {})
 
                 assert result["statusCode"] == 400
                 assert result["message"] == error_message
@@ -90,7 +90,7 @@ def test_main_handler_playbook_action_failure(
 
             # Explicitly target the 'main' logger to ensure the log is captured
             with caplog.at_level(logging.CRITICAL, logger="main"):
-                result = main(valid_guardduty_event, {})
+                result = handler(valid_guardduty_event, {})
 
                 assert result["statusCode"] == 500
                 assert f"Internal playbook error: {error_message}" in result["message"]

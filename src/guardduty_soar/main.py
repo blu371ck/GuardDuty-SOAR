@@ -1,8 +1,6 @@
 import importlib
-import json
 import logging
 import os
-from pathlib import Path
 
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
@@ -94,7 +92,7 @@ logger = logging.getLogger("main")
 load_playbooks()
 
 
-def main(event: LambdaEvent, context: LambdaContext) -> Response:
+def handler(event: LambdaEvent, context: LambdaContext) -> Response:
     """
     Main Lambda handler function.
 

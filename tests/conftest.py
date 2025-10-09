@@ -1,9 +1,16 @@
 import copy
+import json
+import logging
+import time
 from unittest.mock import MagicMock
 
+import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 from guardduty_soar.config import AppConfig, get_config
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -14,14 +21,30 @@ def mock_app_config():
     config.boto_log_level = "WARNING"
     config.ec2_ignored_findings = []
     config.snapshot_description_prefix = "GD-SOAR-Test-Snapshot-"
+    config.allow_remove_public_access = True
     return config
+
+
+@pytest.fixture
+def port_probe_finding(guardduty_finding_detail):
+    """Provides a mock finding for a port probe event."""
+    finding = copy.deepcopy(guardduty_finding_detail)
+    finding["Type"] = "Recon:EC2/PortProbeUnprotectedPort"
+    finding["Service"] = {
+        "Action": {
+            "NetworkConnectionAction": {
+                "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
+            }
+        }
+    }
+    return finding
 
 
 @pytest.fixture(scope="session")
 def guardduty_finding_detail():
-    """Provides a reusable, valid GuardDuty finding 'detail' object."""
+    """Provides a base, complete GuardDuty EC2 finding for reuse."""
     return {
-        "SchemaVesion": "2.0",
+        "SchemaVersion": "2.0",
         "AccountId": "1234567891234",
         "Region": "us-east-1",
         "Partition": "aws",
@@ -31,11 +54,9 @@ def guardduty_finding_detail():
         "Resource": {
             "ResourceType": "Instance",
             "InstanceDetails": {
-                "IamInstanceProfile": {
-                    "Arn": "arn:aws:iam::1234567891234:instance-profile/generated",
-                    "Id": "GeneratedFindingInstanceProfileId",
-                },
+                "IamInstanceProfile": {"Arn": "arn:aws:iam::.../mock-profile"},
                 "InstanceId": "i-99999999",
+                "NetworkInterfaces": [{"SubnetId": "subnet-99999999"}],
             },
         },
         "Service": {},
@@ -81,8 +102,6 @@ def enriched_ec2_finding(guardduty_finding_detail):
             {"Key": "Name", "Value": "MyWebServer"},
             {"Key": "Environment", "Value": "Production"},
         ],
-        # Nest the IP addresses inside the NetworkInterfaces list,
-        # just like the real describe_instances API response would.
         "NetworkInterfaces": [
             {
                 "PrivateIpAddress": "10.0.0.1",
@@ -103,18 +122,6 @@ def enriched_ec2_finding(guardduty_finding_detail):
     }
 
 
-@pytest.fixture(scope="session")
-def real_app_config() -> AppConfig:
-    """
-    Provides a real, shared AppConfig instance for the entire integration test session.
-    This reads from gd.cfg and gd.test.cfg
-    """
-
-    return get_config()
-
-
-# Currently used for testing fallback behaviors, but will eventually add more
-# s3 testing when we get to that point of the GuardDuty findings.
 @pytest.fixture
 def s3_finding_detail():
     """A mock GuardDuty finding for an S3 resource."""
@@ -137,3 +144,228 @@ def s3_finding_detail():
             ],
         },
     }
+
+
+# --- Integration/E2E Infrastructure Fixtures ---
+
+
+@pytest.fixture(scope="session")
+def real_app_config() -> AppConfig:
+    """Provides a real AppConfig instance by reading config files."""
+    return get_config()
+
+
+@pytest.fixture(scope="session")
+def aws_region(real_app_config):
+    """Provides the AWS region for the test session."""
+    return real_app_config.aws_region
+
+
+@pytest.fixture(scope="function")
+def temporary_vpc(aws_region):
+    """
+    Creates a temporary, isolated VPC and Subnet for integration tests.
+    This is the base network fixture.
+    """
+    ec2_client = boto3.client("ec2", region_name=aws_region)
+    resources = {}
+    try:
+        logger.info("Setting up temporary VPC and Subnet...")
+        vpc_res = ec2_client.create_vpc(CidrBlock="10.100.0.0/16")
+        vpc_id = vpc_res["Vpc"]["VpcId"]
+        resources["vpc_id"] = vpc_id
+
+        subnet_res = ec2_client.create_subnet(VpcId=vpc_id, CidrBlock="10.100.1.0/24")
+        subnet_id = subnet_res["Subnet"]["SubnetId"]
+        resources["subnet_id"] = subnet_id
+
+        yield resources
+
+    finally:
+        logger.info("Tearing down temporary VPC...")
+        if "subnet_id" in resources:
+            ec2_client.delete_subnet(SubnetId=resources["subnet_id"])
+        if "vpc_id" in resources:
+            ec2_client.delete_vpc(VpcId=resources["vpc_id"])
+
+
+@pytest.fixture(scope="function")
+def temporary_ec2_instance(aws_region, temporary_vpc):
+    """
+    Creates a temporary EC2 instance within the temporary_vpc.
+    This is the base fixture for any test needing a live instance.
+    """
+    ec2_client = boto3.client("ec2", region_name=aws_region)
+    ssm_client = boto3.client("ssm", region_name=aws_region)
+    resources = {**temporary_vpc}  # Inherit VPC and Subnet IDs
+
+    try:
+        logger.info("Setting up temporary EC2 instance...")
+        default_sg_res = ec2_client.create_security_group(
+            GroupName=f"gd-soar-temp-default-sg-{int(time.time())}",
+            Description="Temp default SG for tests",
+            VpcId=resources["vpc_id"],
+        )
+        default_sg_id = default_sg_res["GroupId"]
+        resources["default_sg_id"] = default_sg_id
+
+        # Create a second, empty SG to act as the quarantine group
+        quarantine_sg_res = ec2_client.create_security_group(
+            GroupName=f"gd-soar-temp-quarantine-sg-{int(time.time())}",
+            Description="Temp quarantine SG for tests",
+            VpcId=resources["vpc_id"],
+        )
+        quarantine_sg_id = quarantine_sg_res["GroupId"]
+        resources["quarantine_sg_id"] = quarantine_sg_id
+
+        ssm_param = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+        ami_id = ssm_client.get_parameter(Name=ssm_param)["Parameter"]["Value"]
+
+        instance_res = ec2_client.run_instances(
+            ImageId=ami_id,
+            InstanceType="t2.micro",
+            SubnetId=resources["subnet_id"],
+            SecurityGroupIds=[default_sg_id],
+            MinCount=1,
+            MaxCount=1,
+        )
+        instance_id = instance_res["Instances"][0]["InstanceId"]
+        resources["instance_id"] = instance_id
+
+        waiter = ec2_client.get_waiter("instance_running")
+        waiter.wait(InstanceIds=[instance_id])
+        logger.info(f"Test instance {instance_id} running.")
+
+        yield resources
+
+    finally:
+        logger.info("Tearing down temporary EC2 instance...")
+        if "instance_id" in resources:
+            try:
+                instance_id = resources["instance_id"]
+                snapshots = ec2_client.describe_snapshots(
+                    OwnerIds=["self"],  # Important to only search your snapshots
+                    Filters=[{"Name": "description", "Values": [f"*{instance_id}*"]}],
+                )["Snapshots"]
+
+                snapshot_ids = [s["SnapshotId"] for s in snapshots]
+
+                if snapshot_ids:
+                    logger.info(
+                        f"Found snapshots to clean up: {snapshot_ids}. Waiting for completion..."
+                    )
+                    waiter = ec2_client.get_waiter("snapshot_completed")
+                    waiter.wait(SnapshotIds=snapshot_ids)
+
+                    for snapshot_id in snapshot_ids:
+                        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+                        logger.info(f"Deleted snapshot: {snapshot_id}.")
+                else:
+                    logger.info("No snapshots found for this instance to clean up.")
+            except ClientError as e:
+                logger.info(
+                    f"An error occurred during snapshot cleanup. Manual clean-up maybe necessary: {e}."
+                )
+
+            ec2_client.terminate_instances(InstanceIds=[resources["instance_id"]])
+            waiter = ec2_client.get_waiter("instance_terminated")
+            waiter.wait(InstanceIds=[resources["instance_id"]])
+        if "default_sg_id" in resources:
+            try:
+                ec2_client.delete_security_group(GroupId=resources["default_sg_id"])
+            except ClientError as e:
+                logger.info(f"Non-critical error deleting SG: {e}")
+        if "quarantine_sg_id" in resources:
+            try:
+                ec2_client.delete_security_group(GroupId=resources["quarantine_sg_id"])
+            except ClientError as e:
+                logger.info(f"Non-critical error deleting quarantine SG: {e}")
+
+
+@pytest.fixture(scope="function")
+def e2e_notification_channel(real_app_config, aws_region):
+    """
+    Creates a temporary SQS queue subscribed to the SNS topic for verifying
+    notifications in an E2E test. Cleans up all resources afterward.
+    """
+    session = boto3.Session()
+    sqs_client = session.client("sqs", region_name=aws_region)
+    sns_client = session.client("sns", region_name=aws_region)
+
+    resources = {}
+    try:
+        logger.info("Setting up E2E notification channel (SQS/SNS)...")
+        queue_name = f"gd-soar-e2e-notify-queue-{int(time.time())}"
+        queue_res = sqs_client.create_queue(QueueName=queue_name)
+        queue_url = queue_res["QueueUrl"]
+        queue_arn = sqs_client.get_queue_attributes(
+            QueueUrl=queue_url, AttributeNames=["QueueArn"]
+        )["Attributes"]["QueueArn"]
+        resources["queue_url"] = queue_url
+
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sns.amazonaws.com"},
+                    "Action": "SQS:SendMessage",
+                    "Resource": queue_arn,
+                    "Condition": {
+                        "ArnEquals": {"aws:SourceArn": real_app_config.sns_topic_arn}
+                    },
+                }
+            ],
+        }
+        sqs_client.set_queue_attributes(
+            QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)}
+        )
+
+        sub_res = sns_client.subscribe(
+            TopicArn=real_app_config.sns_topic_arn,
+            Protocol="sqs",
+            Endpoint=queue_arn,
+            ReturnSubscriptionArn=True,
+            Attributes={"RawMessageDelivery": "true"},
+        )
+        resources["subscription_arn"] = sub_res["SubscriptionArn"]
+
+        yield resources
+
+    finally:
+        logger.info("Tearing down E2E notification channel...")
+        if "subscription_arn" in resources:
+            sns_client.unsubscribe(SubscriptionArn=resources["subscription_arn"])
+        if "queue_url" in resources:
+            sqs_client.delete_queue(QueueUrl=resources["queue_url"])
+
+
+@pytest.fixture
+def temporary_sg_with_public_rule(temporary_ec2_instance):
+    """Takes a temporary EC2 instance and adds a public rule to its security group."""
+    ec2_client = boto3.client("ec2")
+    sg_id = temporary_ec2_instance["default_sg_id"]
+
+    ec2_client.authorize_security_group_ingress(
+        GroupId=sg_id,
+        IpPermissions=[
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+            }
+        ],
+    )
+    temporary_ec2_instance["sg_id"] = sg_id
+    yield temporary_ec2_instance
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clear_config_cache():
+    """
+    An autouse fixture that automatically clears the get_config cache
+    at the beginning of each test session. This ensures that any changes
+    to config files are loaded.
+    """
+    get_config.cache_clear()

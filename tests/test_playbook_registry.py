@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from guardduty_soar.playbook_registry import (
@@ -14,14 +12,6 @@ from guardduty_soar.playbook_registry import (
 class MockPlaybook(BasePlaybook):
     def run(self, event):
         pass
-
-
-@pytest.fixture(autouse=True)
-def clear_registry():
-    """A fixture to automatically clear the registry before each test."""
-    _PLAYBOOK_REGISTRY.clear()
-    yield
-    _PLAYBOOK_REGISTRY.clear()
 
 
 def test_register_playbook():

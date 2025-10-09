@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
 from botocore.stub import Stubber
 
 from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction

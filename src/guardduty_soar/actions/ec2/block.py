@@ -1,5 +1,4 @@
 import logging
-from typing import Dict, List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -21,24 +20,6 @@ class BlockMaliciousIpAction(BaseAction):
     def __init__(self, session: boto3.Session, config: AppConfig):
         super().__init__(session, config)
         self.ec2_client = self.session.client("ec2")
-
-    def _get_next_available_rule_number(
-        self, entries: List[Dict], is_egress: bool
-    ) -> int:
-        """
-        Finds the next available rule number in a list of NACL entries, staying
-        below 100 to avoid conflicts with default rules.
-        """
-        # Filter for ingress or egress rules below 100
-        relevant_rules = [
-            e["RuleNumber"]
-            for e in entries
-            if e["Egress"] == is_egress and e["RuleNumber"] < 100
-        ]
-        if not relevant_rules:
-            return 1  # Start at 1 if no rules are in the range
-
-        return max(relevant_rules) + 1
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         try:
@@ -72,13 +53,16 @@ class BlockMaliciousIpAction(BaseAction):
             logger.info(f"Found Network ACL: {nacl_id}.")
 
             # Determine next available rules for both ingress and egress (we do both for defense in depth).
-            inbound_rule_num = self._get_next_available_rule_number(
-                nacl["Entries"], is_egress=False
-            )
-            outbound_rule_num = self._get_next_available_rule_number(
-                nacl["Entries"], is_egress=True
-            )
+            existing_rules = [
+                e["RuleNumber"] for e in nacl["Entries"] if e["RuleNumber"] < 100
+            ]
 
+            # Find the highest current rule number, or default to 0 if none exist.
+            last_rule_num = max(existing_rules) if existing_rules else 0
+
+            # Assign the next two sequential numbers.
+            inbound_rule_num = last_rule_num + 1
+            outbound_rule_num = last_rule_num + 2
             ip_cidr = f"{remote_ip}/32"
 
             # Create the INBOUND deny rule

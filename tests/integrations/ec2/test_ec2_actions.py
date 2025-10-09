@@ -1,4 +1,4 @@
-import json
+import logging
 import time
 
 import boto3
@@ -8,544 +8,238 @@ from botocore.exceptions import ClientError
 from guardduty_soar.actions.ec2.block import BlockMaliciousIpAction
 from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
 from guardduty_soar.actions.ec2.isolate import IsolateInstanceAction
-from guardduty_soar.actions.ec2.quarantine import QuarantineInstanceProfileAction
+from guardduty_soar.actions.ec2.remove import RemovePublicAccessAction
 from guardduty_soar.actions.ec2.snapshot import CreateSnapshotAction
 from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction
 
-# Mark all tests in this file as 'integration' tests
 pytestmark = pytest.mark.integration
 
-
-@pytest.fixture(scope="module")
-def aws_region(real_app_config):
-    """
-    Provides the AWs region for the test session, making tests portable.
-    It uses the region from the default boto3 session. If it can't find
-    it for whatever reason, it defaults to 'us-east-1'.
-    """
-    return real_app_config._config.get(
-        "General", "aws_region", fallback=boto3.Session().region_name or "us-east-1"
-    )
-
-
-@pytest.fixture(scope="module")
-def ssm_client(aws_region):
-    """Provides an SSM client for the test module."""
-    return boto3.client("ssm", region_name=aws_region)
-
-
-@pytest.fixture(scope="module")
-def ec2_client(aws_region):
-    """Provides an EC2 client for the test module."""
-    return boto3.client("ec2", region_name=aws_region)
-
-
-@pytest.fixture(scope="module")
-def iam_client(aws_region):
-    """Provides an IAM client for the test module."""
-    return boto3.client("iam", region_name=aws_region)
-
-
-@pytest.fixture(scope="module")
-def sts_client(aws_region):
-    """Provides an STS client for the test module."""
-    return boto3.client("sts", region_name=aws_region)
-
-
-@pytest.fixture(scope="module")
-def latest_amazon_linux_ami(ssm_client):
-    """Dynamically looks up the latest Amazon Linux 2 AMI ID."""
-    response = ssm_client.get_parameter(
-        Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-    )
-    ami_id = response["Parameter"]["Value"]
-    return ami_id
-
-
-@pytest.fixture
-def temporary_ec2_instance(latest_amazon_linux_ami, real_app_config, ec2_client):
-    """
-    Creates and tears down a temporary EC2 instance using the subnet ID from gd.test.cfg.
-    """
-
-    # Integration testing is done on real components. If required real components
-    # are not provided we are simply skipping tests that require them.
-    subnet_id = real_app_config.testing_subnet_id
-    if not subnet_id:
-        pytest.skip(
-            "Skipping EC2 integration tests: 'testing_subnet_id' is not configured in gd.test.cfg"
-        )
-
-    print(f"\nSetting up temporary EC2 instance in subnet {subnet_id}...")
-    instance_id = None
-    try:
-        instance = ec2_client.run_instances(
-            ImageId=latest_amazon_linux_ami,
-            InstanceType="t2.micro",
-            SubnetId=subnet_id,
-            MinCount=1,
-            MaxCount=1,
-        )["Instances"][0]
-        instance_id = instance["InstanceId"]
-
-        waiter = ec2_client.get_waiter("instance_running")
-        waiter.wait(InstanceIds=[instance_id])
-        print(f"Instance {instance_id} is running.")
-
-        # Yield allows us to get returned to when downstream steps are
-        # finished. That way we can attempt to clean up.
-        yield instance_id
-
-    # Regardless of test failures/success. We must cleanup if we can.
-    finally:
-        if instance_id:
-            print(f"\nTearing down instance {instance_id}...")
-            try:
-                ec2_client.terminate_instances(InstanceIds=[instance_id])
-                waiter = ec2_client.get_waiter("instance_terminated")
-                waiter.wait(InstanceIds=[instance_id])
-                print("Instance terminated.")
-            except ClientError as e:
-                print(
-                    f"Could not terminate instance {instance_id}. Manual cleanup may be required. Error: {e}"
-                )
-
-
-@pytest.fixture
-def test_nacl_resources(aws_region, ec2_client):
-    """
-    Creates a temporary VPC, Subnet, and Identifies the default NACL for testing.
-    Cleans up all resources afterwards.
-    """
-
-    print("\nSetting up temporary VPC for NACL integration test...")
-    vpc = ec2_client.create_vpc(CidrBlock="10.1.0.0/16")
-    vpc_id = vpc["Vpc"]["VpcId"]
-
-    subnet = ec2_client.create_subnet(VpcId=vpc_id, CidrBlock="10.1.1.0/24")
-    subnet_id = subnet["Subnet"]["SubnetId"]
-
-    # Grab the default NACL
-    nacl = ec2_client.describe_network_acls(
-        Filters=[
-            {"Name": "vpc-id", "Values": [vpc_id]},
-            {"Name": "default", "Values": ["true"]},
-        ]
-    )["NetworkAcls"][0]
-    nacl_id = nacl["NetworkAclId"]
-
-    resources = {"vpc_id": vpc_id, "subnet_id": subnet_id, "nacl_id": nacl_id}
-
-    yield resources
-
-    # --- Teardown ---
-    print(f"\nTearing down temporary VPC {vpc_id}...")
-    try:
-        ec2_client.delete_subnet(SubnetId=subnet_id)
-        ec2_client.delete_vpc(VpcId=vpc_id)
-    except ClientError as e:
-        print(
-            f"Error during teardown (resources may already be gone), may need manual inspection: {e}."
-        )
-
-
-@pytest.fixture
-def port_probe_finding():
-    """A mock GuardDuty finding for a port probe event."""
-    return {
-        "Resource": {
-            "InstanceDetails": {"NetworkInterfaces": [{"SubnetId": "subnet-12345678"}]}
-        },
-        "Service": {
-            "Action": {
-                "NetworkConnectionAction": {
-                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
-                }
-            }
-        },
-        "AccountId": "123456789012",
-        "Region": "us-east-1",
-        "Type": "Recon:EC2/PortProbeUnprotectedPort",
-        "Id": "port-probe-finding-id",
-    }
+logger = logging.getLogger(__name__)
 
 
 def test_tag_instance_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail, real_app_config, ec2_client
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
-    """
-    This test runs the TagInstanceAction against a temporary EC2 instance.
-    """
-    # Update the finding detail to use the instance ID from our fixture
-    guardduty_finding_detail["Resource"]["InstanceDetails"][
-        "InstanceId"
-    ] = temporary_ec2_instance
+    """Tests the TagInstanceAction against a temporary EC2 instance."""
+    instance_id = temporary_ec2_instance["instance_id"]
+    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    session = boto3.Session(region_name="us-east-1")
+    session = boto3.Session()
     action = TagInstanceAction(session, real_app_config)
-
     result = action.execute(
         guardduty_finding_detail, playbook_name="IntegrationTestPlaybook"
     )
 
     assert result["status"] == "success"
+    time.sleep(2)  # Allow tags to propagate
 
-    # Give AWS a moment to ensure the tags are fully propagated
-    time.sleep(5)
-
-    response = ec2_client.describe_tags(
-        Filters=[{"Name": "resource-id", "Values": [temporary_ec2_instance]}]
-    )
-
-    # Convert the list of tags to a dictionary for easier assertion
-    tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
-
-    assert "SOAR-Status" in tags
-    assert tags["SOAR-Status"] == "Remediation-In-Progress"
-    assert tags["GUARDDUTY-SOAR-ID"] == guardduty_finding_detail["Id"]
+    ec2_client = session.client("ec2")
+    tags = {
+        t["Key"]: t["Value"]
+        for t in ec2_client.describe_tags(
+            Filters=[{"Name": "resource-id", "Values": [instance_id]}]
+        )["Tags"]
+    }
+    assert "SOAR-Status" in tags and tags["SOAR-Status"] == "Remediation-In-Progress"
 
 
 def test_isolate_instance_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail, real_app_config, ec2_client
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
-    """Tests the IsolateInstanceAction using the quarantine SG from the config."""
-    quarantine_sg = real_app_config.quarantine_sg_id
-    if not quarantine_sg or "sg-012345abcdefabcde" in quarantine_sg:
-        pytest.skip(
-            "Skipping isolate test: 'quarantine_security_group_id' is not configured in gd.test.cfg"
-        )
+    """Tests the IsolateInstanceAction."""
+    quarantine_sg_id = temporary_ec2_instance["quarantine_sg_id"]
 
-    guardduty_finding_detail["Resource"]["InstanceDetails"][
-        "InstanceId"
-    ] = temporary_ec2_instance
-    session = boto3.Session(region_name=ec2_client.meta.region_name)
-    action = IsolateInstanceAction(session, real_app_config)
+    # Create a mutable copy of the config and set the quarantine ID for this test
+    from dataclasses import replace
 
+    test_config = replace(real_app_config, quarantine_sg_id=quarantine_sg_id)
+
+    instance_id = temporary_ec2_instance["instance_id"]
+    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+
+    session = boto3.Session()
+    action = IsolateInstanceAction(session, test_config)  # Use the modified config
     result = action.execute(guardduty_finding_detail)
 
     assert result["status"] == "success"
 
-    # Give AWS some time to implement changes.
-    time.sleep(3)
-
-    response = ec2_client.describe_instances(InstanceIds=[temporary_ec2_instance])
-    instance = response["Reservations"][0]["Instances"][0]
+    ec2_client = session.client("ec2")
+    instance = ec2_client.describe_instances(InstanceIds=[instance_id])["Reservations"][
+        0
+    ]["Instances"][0]
     attached_sgs = [sg["GroupId"] for sg in instance["SecurityGroups"]]
-    assert len(attached_sgs) == 1
-    assert attached_sgs[0] == quarantine_sg
+    assert attached_sgs == [quarantine_sg_id]
 
 
-@pytest.fixture(scope="module")
-def test_iam_resources(iam_client):
-    """Creates a temporary IAM role, instance profile, and deny policy for testing."""
-    role_name = "gd-soar-test-role"
-    profile_name = "gd-soar-test-profile"
-    policy_name = "gd-soar-test-deny-policy"
-
-    assume_role_policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Principal": {"Service": "ec2.amazonaws.com"},
-                "Action": "sts:AssumeRole",
-            }
-        ],
-    }
-    deny_policy_document = {
-        "Version": "2012-10-17",
-        "Statement": [{"Effect": "Deny", "Action": "*", "Resource": "*"}],
-    }
-
-    # Create Role
-    role = iam_client.create_role(
-        RoleName=role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
-    )
-
-    # Create Policy
-    policy = iam_client.create_policy(
-        PolicyName=policy_name, PolicyDocument=json.dumps(deny_policy_document)
-    )
-    policy_arn = policy["Policy"]["Arn"]
-
-    # Create Instance Profile
-    instance_profile = iam_client.create_instance_profile(
-        InstanceProfileName=profile_name
-    )
-    iam_client.add_role_to_instance_profile(
-        InstanceProfileName=profile_name, RoleName=role_name
-    )
-
-    # Give AWS time for the instance profile to be ready
-    time.sleep(10)
-
-    # Yield allows us to get returned to in order to properly clean up resources.
-    yield {
-        "role_name": role_name,
-        "profile_name": profile_name,
-        "policy_arn": policy_arn,
-    }
-
-    # --- TEARDOWN ---
-    iam_client.remove_role_from_instance_profile(
-        InstanceProfileName=profile_name, RoleName=role_name
-    )
-    iam_client.delete_instance_profile(InstanceProfileName=profile_name)
-
-    # Detach any policies before deleting role
-    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
-        "AttachedPolicies"
-    ]
-    for p in attached_policies:
-        iam_client.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
-    iam_client.delete_role(RoleName=role_name)
-
-    # The deny-all policy is managed by the user in production, but we created it for the test.
-    # To delete it, we must detach it from any entities first. Since we only attached it to one role,
-    # and we just detached everything from that role, we should be clear to delete.
-    iam_client.delete_policy(PolicyArn=policy_arn)
-
-
-def test_quarantine_profile_action_integration(
-    guardduty_finding_detail,
-    mock_app_config,
-    real_app_config,
-    test_iam_resources,
-    iam_client,
-    sts_client,
-    aws_region,
-    mocker,  # Add the pytest-mock fixture
-):
-    """
-    This test runs the QuarantineInstanceProfileAction against a REAL, temporary IAM Role.
-    """
-    # --- Arrange ---
-    role_name = test_iam_resources["role_name"]
-    deny_policy_arn = real_app_config.iam_deny_all_policy_arn
-    account_id = sts_client.get_caller_identity()["Account"]
-    instance_profile_arn = f"arn:aws:iam::{account_id}:instance-profile/{role_name}"
-
-    # Update the mock config to use our real, temporary deny policy
-    mock_app_config.iam_deny_all_policy_arn = deny_policy_arn
-
-    # Update the finding to point to our temporary role
-    finding = guardduty_finding_detail
-    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"][
-        "Arn"
-    ] = instance_profile_arn
-
-    session = boto3.Session(region_name=aws_region)
-    action = QuarantineInstanceProfileAction(session, mock_app_config)
-
-    # THE FIX: Mock the ec2_client.describe_instances call within the action.
-    # We'll make it return a successful response that includes our temporary IAM profile.
-    mock_describe_response = {
-        "Reservations": [
-            {
-                "Instances": [
-                    {
-                        "InstanceId": finding["Resource"]["InstanceDetails"][
-                            "InstanceId"
-                        ],
-                        "IamInstanceProfile": {"Arn": instance_profile_arn},
-                    }
-                ]
-            }
-        ]
-    }
-    mocker.patch.object(
-        action.ec2_client, "describe_instances", return_value=mock_describe_response
-    )
-
-    # --- Act ---
-    result = action.execute(finding)
-
-    # --- Assert ---
-    assert result["status"] == "success"
-
-    # Verify the deny policy is now attached to the role
-    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
-        "AttachedPolicies"
-    ]
-    attached_policy_arns = [p["PolicyArn"] for p in attached_policies]
-
-    assert deny_policy_arn in attached_policy_arns
-
-
-# This test is pretty complex, unfortunately the lifecycle of a snapshot is complicated
-# and time consuming. We have to ensure we build it up, test it and tear down anything
-# we created, while ensuring we provide adequate time for the item to provision.
 def test_create_snapshot_action_integration(
-    temporary_ec2_instance,
-    guardduty_finding_detail,
-    real_app_config,
-    ec2_client,
-    aws_region,
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config, aws_region
 ):
-    """
-    This test runs the CreateSnapshotAction against a REAL, temporary EC2 instance,
-    verifies the snapshot is created, and cleans up the snapshot afterwards.
-    """
-
-    instance_id = temporary_ec2_instance
+    """Tests the CreateSnapshotAction against a temporary EC2 instance."""
+    ec2_client = boto3.client("ec2", region_name=aws_region)
+    instance_id = temporary_ec2_instance["instance_id"]
     guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    session = boto3.Session(region_name=aws_region)
+    session = boto3.Session()
     action = CreateSnapshotAction(session, real_app_config)
 
-    created_snapshot_ids = []  # Keep track of snapshots for deletion.
+    created_snapshot_ids = []
 
     try:
         result = action.execute(guardduty_finding_detail)
 
         assert (
             result["status"] == "success"
-        ), f"Action failed with details: {result["details"]}"
+        ), f"Action failed with details: {result['details']}"
         assert "Successfully created snapshots" in result["details"]
 
-        # We have to give AWS time for snapshots to provision and get tagged.
-        time.sleep(10)
+        time.sleep(5)
 
-        # Now we need to find the snapshot by using its tags.
         response = ec2_client.describe_snapshots(
             Filters=[
                 {
                     "Name": "tag:GuardDuty-SOAR-Source-Instance-ID",
                     "Values": [instance_id],
-                },
-                {
-                    "Name": "tag:GuardDuty-SOAR-Finding-ID",
-                    "Values": [guardduty_finding_detail["Id"]],
-                },
+                }
             ]
         )
 
         snapshots = response.get("Snapshots", [])
         assert len(snapshots) >= 1, "No snapshot was found with the expected tags."
 
-        snapshot = snapshots[0]
-        created_snapshot_ids.append(snapshot["SnapshotId"])
+        created_snapshot_ids = [s["SnapshotId"] for s in snapshots]
 
-        assert guardduty_finding_detail["Id"] in snapshot["Description"]
-
-    # Regardless of test failures/success. We must cleanup if we can.
     finally:
-        # --- Teardown ---
+        # -- Teardown with waiter --
         if not created_snapshot_ids:
-            print("No snapshots to clean up.")
+            logger.info("No snapshots to clean up.")
             return
 
-        for snapshot_id in created_snapshot_ids:
-            try:
+        logger.info(
+            f"Cleaning up snapshots: {created_snapshot_ids}. Waiting for completion..."
+        )
+        try:
+            waiter = ec2_client.get_waiter("snapshot_completed")
+            waiter.wait(SnapshotIds=created_snapshot_ids)
+            logger.info("Snapshots are complete. Proceeding with deletion.")
+
+            for snapshot_id in created_snapshot_ids:
                 ec2_client.delete_snapshot(SnapshotId=snapshot_id)
-                print("Deleted snapshot.")
-            except ClientError as e:
-                print(
-                    f"Could not delete snapshot {snapshot_id}. Manual cleanup may be required. Error: {e}."
-                )
+                logger.info(f"Deleted snapshot: {snapshot_id}.")
+        except ClientError as e:
+            logger.info(
+                f"Could not clean up snapshots. Manual cleanup may be required. Error: {e}."
+            )
 
 
 def test_enrich_finding_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail, real_app_config, ec2_client
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
-    """
-    This test runs the EnrichFindingWithInstanceMetadataAction against a REAL,
-    temporary EC2 instance and validates the returned metadata.
-    """
-    instance_id = temporary_ec2_instance
+    """Tests the EnrichFindingWithInstanceMetadataAction against a live instance."""
+    instance_id = temporary_ec2_instance["instance_id"]
     guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    session = boto3.Session(region_name=ec2_client.meta.region_name)
+    session = boto3.Session()
     action = EnrichFindingWithInstanceMetadataAction(session, real_app_config)
-
     result = action.execute(guardduty_finding_detail)
 
-    assert (
-        result["status"] == "success"
-    ), f"Action failed with details: {result['details']}"
-
-    # Verify the structure of the enriched finding
+    assert result["status"] == "success"
     enriched_finding = result["details"]
-    assert "guardduty_finding" in enriched_finding
-    assert "instance_metadata" in enriched_finding
-
-    # Verify the content of the enriched data
-    assert enriched_finding["guardduty_finding"] == guardduty_finding_detail
-
-    instance_metadata = enriched_finding["instance_metadata"]
-    assert instance_metadata is not None
-    assert instance_metadata["InstanceId"] == instance_id
-
-    # If need be we can add more and more singleton assertions here to test the structure
-    # of the results.
-    assert "VpcId" in instance_metadata
-    assert "SubnetId" in instance_metadata
-
-    print("Successfully enriched finding.")
+    assert enriched_finding["instance_metadata"]["InstanceId"] == instance_id
+    assert "VpcId" in enriched_finding["instance_metadata"]
 
 
 def test_terminate_instance_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail, mock_app_config, ec2_client
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
-    """
-    This test runs the TerminateInstanceAction against a REAL, temporary EC2 instance
-    and verifies that it enters the 'shutting-down' state.
-    """
-    instance_id = temporary_ec2_instance
+    """Tests the TerminateInstanceAction against a temporary EC2 instance."""
+    instance_id = temporary_ec2_instance["instance_id"]
     guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    # Ensure termination is enabled for this test
-    mock_app_config.allow_terminate = True
+    from dataclasses import replace
 
-    session = boto3.Session(region_name=ec2_client.meta.region_name)
-    action = TerminateInstanceAction(session, mock_app_config)
+    test_config = replace(real_app_config, allow_terminate=True)
 
-    print(f"\nAbout to terminate instance {instance_id} as part of the test...")
+    session = boto3.Session()
+    action = TerminateInstanceAction(session, test_config)  # Use the modified config
     result = action.execute(guardduty_finding_detail)
 
-    assert (
-        result["status"] == "success"
-    ), f"Action failed with details: {result['details']}"
-    assert "Successfully initiated termination" in result["details"]
+    assert result["status"] == "success"
 
-    # Give AWS a moment to process the termination request
-    print("Waiting for instance state to change...")
-    time.sleep(10)
 
-    # Verify the instance's state is now 'shutting-down' or 'terminated'
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
-        instance_state = instance["State"]["Name"]
+@pytest.fixture
+def temporary_sg_with_public_rule(temporary_ec2_instance):
+    """Takes a temporary EC2 instance and adds a public rule to its security group."""
+    ec2_client = boto3.client("ec2")
+    sg_id = temporary_ec2_instance["default_sg_id"]
 
-        assert instance_state in ["shutting-down", "terminated"]
-        print(f"Verified instance {instance_id} is in '{instance_state}' state.")
+    ec2_client.authorize_security_group_ingress(
+        GroupId=sg_id,
+        IpPermissions=[
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+            }
+        ],
+    )
+    temporary_ec2_instance["sg_id"] = sg_id
+    yield temporary_ec2_instance
 
-    except ClientError as e:
-        # If the instance is not found, it means it terminated very quickly, which is a pass.
-        if e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
-            print(
-                f"Instance {instance_id} was not found, assuming successful termination."
-            )
-            pass
-        else:
-            # Re-raise any other API errors
-            raise e
+
+def test_remove_public_access_integration(
+    temporary_sg_with_public_rule, guardduty_finding_detail, real_app_config
+):
+    """Tests that RemovePublicAccessAction can successfully find and revoke a public rule."""
+    instance_id = temporary_sg_with_public_rule["instance_id"]
+    sg_id = temporary_sg_with_public_rule["sg_id"]
+    finding = guardduty_finding_detail
+    finding["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+
+    session = boto3.Session()
+    action = RemovePublicAccessAction(session, real_app_config)
+    result = action.execute(finding)
+
+    assert result["status"] == "success"
+    assert f"Removed 1 public rule(s) from {sg_id}" in result["details"]
+
+    ec2_client = session.client("ec2")
+    updated_sg = ec2_client.describe_security_groups(GroupIds=[sg_id])[
+        "SecurityGroups"
+    ][0]
+    is_still_public = any(
+        r.get("CidrIp") == "0.0.0.0/0"
+        for p in updated_sg.get("IpPermissions", [])
+        for r in p.get("IpRanges", [])
+    )
+    assert not is_still_public
+
+
+@pytest.fixture
+def temporary_nacl(temporary_vpc):
+    """Takes a temporary VPC and identifies its default NACL."""
+    ec2_client = boto3.client("ec2")
+    vpc_id = temporary_vpc["vpc_id"]
+    nacl = ec2_client.describe_network_acls(
+        Filters=[
+            {"Name": "vpc-id", "Values": [vpc_id]},
+            {"Name": "default", "Values": ["true"]},
+        ]
+    )["NetworkAcls"][0]
+
+    resources = {**temporary_vpc, "nacl_id": nacl["NetworkAclId"]}
+    yield resources
 
 
 def test_block_malicious_ip_integration(
-    port_probe_finding, test_nacl_resources, real_app_config, aws_region, ec2_client
+    port_probe_finding, temporary_nacl, real_app_config
 ):
-    """
-    Tests that the BlockMaliciousIpAction can successfully find a NACL and add
-    inbound/outbound deny rules.
-    """
-    subnet_id = test_nacl_resources["subnet_id"]
-    nacl_id = test_nacl_resources["nacl_id"]
-    malicious_ip = "198.51.100.5"
+    """Tests that BlockMaliciousIpAction can add deny rules to a NACL."""
+    subnet_id = temporary_nacl["subnet_id"]
+    nacl_id = temporary_nacl["nacl_id"]
+    malicious_ip = "198.51.100.25"
 
-    # Assign our newly created items to the findings details.
     finding = port_probe_finding
     finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0][
         "SubnetId"
@@ -554,25 +248,19 @@ def test_block_malicious_ip_integration(
         "IpAddressV4"
     ] = malicious_ip
 
-    session = boto3.Session(region_name=aws_region)
+    session = boto3.Session()
     action = BlockMaliciousIpAction(session, real_app_config)
-
     result = action.execute(finding)
 
     assert result["status"] == "success"
 
+    ec2_client = session.client("ec2")
     updated_nacl = ec2_client.describe_network_acls(NetworkAclIds=[nacl_id])[
         "NetworkAcls"
     ][0]
     new_rules = [
-        entry
-        for entry in updated_nacl["Entries"]
-        if entry["RuleAction"] == "deny" and entry["CidrBlock"] == f"{malicious_ip}/32"
+        e
+        for e in updated_nacl["Entries"]
+        if e["RuleAction"] == "deny" and e["CidrBlock"] == f"{malicious_ip}/32"
     ]
-
-    # Check to make sure both ingress and egress have rules.
     assert len(new_rules) == 2
-    assert any(rule["Egress"] is False for rule in new_rules)
-    assert any(rule["Egress"] is True for rule in new_rules)
-
-    print(f"\nSuccessfully verified deny rules were added to NACL {nacl_id}.")

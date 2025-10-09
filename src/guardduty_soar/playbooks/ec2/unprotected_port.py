@@ -64,6 +64,17 @@ class EC2UnprotectedPort(EC2BasePlaybook):
         # internet by design, you can disable this rule in configurations.
         # Resource:
         # https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-ec2.html#recon-ec2-portprobeunprotectedport
-        # TODO
+        result = self.remove_rule.execute(event, config=self.config)
+        if result["status"] == "error":
+            # Removing rules failed
+            error_details = result["details"]
+            logger.error(
+                f"Action: 'remove_public_access_rules' failed: {error_details}."
+            )
+            raise PlaybookActionFailedError(
+                f"RemovePublicAccessAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "RemovePublicAccess"})
+        logger.info("Successfully removed public access rules.")
 
         return results, enriched_data

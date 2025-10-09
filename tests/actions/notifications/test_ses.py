@@ -11,7 +11,6 @@ def test_ses_action_execute_success(guardduty_finding_detail, mock_app_config, m
     """
     Tests that the SES action correctly renders a template and calls the SES API.
     """
-    # Arrange
     mock_app_config.allow_ses = True
     mock_app_config.registered_email_address = "test@example.com"
 
@@ -46,11 +45,9 @@ def test_ses_action_execute_success(guardduty_finding_detail, mock_app_config, m
     )
     mocker.patch.object(action, "_render_template", return_value=rendered_template)
 
-    # Act
     with stubber:
         result = action.execute(guardduty_finding_detail, template_type="starting")
 
-    # Assert
     assert result["status"] == "success"
     stubber.assert_no_pending_responses()
     action._build_template_context.assert_called_once_with(
@@ -69,10 +66,8 @@ def test_ses_action_disabled_in_config(guardduty_finding_detail, mock_app_config
     mock_session = MagicMock()
     action = SendSESNotificationAction(mock_session, mock_app_config)
 
-    # Act
     result = action.execute(guardduty_finding_detail)
 
-    # Assert
     assert result["status"] == "success"
     assert "disabled" in result["details"]
     mock_session.client.return_value.send_email.assert_not_called()
