@@ -527,3 +527,35 @@ def compromised_instance_e2e_setup(temporary_ec2_instance, real_app_config):
         if "queue_url" in resources:
             sqs_client.delete_queue(QueueUrl=resources["queue_url"])
         logger.info("Cleaned up SQS queue and SNS subscription.")
+
+
+@pytest.fixture
+def ssh_brute_force_finding():
+    """Provides the 'detail' object for a sample SSHBruteForce finding."""
+    return {
+        "AccountId": "1234567891234",
+        "Region": "us-east-1",
+        "Id": "49514155ed6b4536b05649a87fc3c05a",
+        "Type": "UnauthorizedAccess:EC2/SSHBruteForce",
+        "Resource": {
+            "ResourceType": "Instance",
+            "InstanceDetails": {
+                "InstanceId": "i-99999999",
+                "NetworkInterfaces": [{"SubnetId": "subnet-99999999"}]
+            }
+        },
+        "Service": {
+            "Action": {
+                "ActionType": "NETWORK_CONNECTION",
+                "NetworkConnectionAction": {
+                    "ConnectionDirection": "INBOUND",
+                    "Protocol": "TCP",
+                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.0"}
+                }
+            },
+            "ResourceRole": "TARGET" # Default to TARGET, we override in tests if needed
+        },
+        "Severity": 5,
+        "Title": "SSH brute force attacks against i-99999999.",
+        "Description": "198.51.100.0 is performing SSH brute force attacks against i-99999999.",
+    }
