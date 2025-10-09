@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 import time
+from typing import Dict, List
 from unittest.mock import MagicMock
 
 import boto3
@@ -369,3 +370,160 @@ def clear_config_cache():
     to config files are loaded.
     """
     get_config.cache_clear()
+
+
+@pytest.fixture(scope="function")
+def sqs_poller():
+    """
+    Provides a helper function (a "factory") to poll an SQS queue
+    until an expected number of messages are received or a timeout occurs.
+    """
+    sqs_client = boto3.client("sqs")
+
+    def _poll_and_assert(
+        queue_url: str, expected_count: int, timeout: int = 20
+    ) -> List[Dict]:
+        """The actual polling function."""
+        all_messages = []
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            messages = sqs_client.receive_message(
+                QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=2
+            ).get("Messages", [])
+
+            if messages:
+                all_messages.extend(messages)
+                entries = [
+                    {"Id": m["MessageId"], "ReceiptHandle": m["ReceiptHandle"]}
+                    for m in messages
+                ]
+                sqs_client.delete_message_batch(QueueUrl=queue_url, Entries=entries)
+
+            if len(all_messages) >= expected_count:
+                break
+
+            time.sleep(1)
+
+        # Assert right inside the helper for a clear failure message
+        assert (
+            len(all_messages) >= expected_count
+        ), f"Polling timed out. Expected {expected_count} messages but only received {len(all_messages)}."
+
+        return all_messages
+
+    return _poll_and_assert
+
+
+@pytest.fixture(scope="function")
+def compromised_instance_e2e_setup(temporary_ec2_instance, real_app_config):
+    """
+    Sets up the specific environment for the compromise playbook E2E test.
+    It attaches a temporary IAM role and creates an SQS queue for notifications.
+    """
+    session = boto3.Session()
+    iam_client = session.client("iam")
+    ec2_client = session.client("ec2")
+    sqs_client = session.client("sqs")
+    sns_client = session.client("sns")
+
+    resources = {**temporary_ec2_instance}
+    role_name = f"gd-soar-e2e-role-{int(time.time())}"
+    profile_name = role_name
+
+    try:
+        # --- Setup IAM Role & Profile ---
+        assume_role_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "ec2.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+        iam_client.create_role(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
+        )
+        iam_client.create_instance_profile(InstanceProfileName=profile_name)
+        iam_client.add_role_to_instance_profile(
+            InstanceProfileName=profile_name, RoleName=role_name
+        )
+        resources["role_name"] = role_name
+        time.sleep(10)  # Allow time for profile to be available
+
+        # Attach the profile to the already-running instance
+        ec2_client.associate_iam_instance_profile(
+            IamInstanceProfile={"Name": profile_name},
+            InstanceId=resources["instance_id"],
+        )
+        logger.info(f"Attached IAM profile {profile_name} to instance.")
+
+        # --- Setup SQS/SNS Notification Channel ---
+        queue_name = f"gd-soar-e2e-compromise-queue-{int(time.time())}"
+        queue_res = sqs_client.create_queue(QueueName=queue_name)
+        queue_url = queue_res["QueueUrl"]
+        queue_arn = sqs_client.get_queue_attributes(
+            QueueUrl=queue_url, AttributeNames=["QueueArn"]
+        )["Attributes"]["QueueArn"]
+        resources["queue_url"] = queue_url
+
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sns.amazonaws.com"},
+                    "Action": "SQS:SendMessage",
+                    "Resource": queue_arn,
+                    "Condition": {
+                        "ArnEquals": {"aws:SourceArn": real_app_config.sns_topic_arn}
+                    },
+                }
+            ],
+        }
+        sqs_client.set_queue_attributes(
+            QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)}
+        )
+
+        sub_res = sns_client.subscribe(
+            TopicArn=real_app_config.sns_topic_arn,
+            Protocol="sqs",
+            Endpoint=queue_arn,
+            ReturnSubscriptionArn=True,
+            Attributes={"RawMessageDelivery": "true"},
+        )
+        resources["subscription_arn"] = sub_res["SubscriptionArn"]
+
+        yield resources
+
+    finally:
+        # --- Teardown ---
+        logger.info("Tearing down E2E compromise test resources...")
+
+        # The temporary_ec2_instance fixture will clean up the instance, vpc, and sgs.
+        # We just need to clean up the IAM and SQS/SNS resources created here.
+        if "role_name" in resources:
+            try:
+                iam_client.remove_role_from_instance_profile(
+                    InstanceProfileName=profile_name, RoleName=role_name
+                )
+                iam_client.delete_instance_profile(InstanceProfileName=profile_name)
+                attached_policies = iam_client.list_attached_role_policies(
+                    RoleName=role_name
+                ).get("AttachedPolicies", [])
+                for policy in attached_policies:
+                    iam_client.detach_role_policy(
+                        RoleName=role_name, PolicyArn=policy["PolicyArn"]
+                    )
+                iam_client.delete_role(RoleName=role_name)
+                logger.info("Cleaned up temporary IAM role and profile.")
+            except ClientError as e:
+                logger.info(f"Error during IAM cleanup: {e}")
+
+        if "subscription_arn" in resources:
+            sns_client.unsubscribe(SubscriptionArn=resources["subscription_arn"])
+        if "queue_url" in resources:
+            sqs_client.delete_queue(QueueUrl=resources["queue_url"])
+        logger.info("Cleaned up SQS queue and SNS subscription.")

@@ -1,7 +1,6 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 
-from guardduty_soar.models import ActionResult, GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
@@ -46,7 +45,6 @@ logger = logging.getLogger(__name__)
     "Trojan:EC2/DropPoint!DNS",
     "Trojan:EC2/PhishingDomainRequest!DNS",
     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
-    "UnauthorizedAccess:EC2/MetadataDNSRebind",
     "UnauthorizedAccess:EC2/TorClient",
     "UnauthorizedAccess:EC2/TorRelay",
 )
@@ -56,9 +54,7 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
     compromised EC2 instance.
     """
 
-    def run(
-        self, event: GuardDutyEvent
-    ) -> Tuple[List[ActionResult], Optional[Dict[str, Any]]]:
+    def run(self, event: GuardDutyEvent) -> PlaybookResult:
         logger.info(
             f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['InstanceId']}"
         )
@@ -70,7 +66,10 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
         # compromise workflow to the base class allows all classes to inherit it and use
         # conditional logic to decide based on "actor" or "target" if it should run it or
         # something else.
-        results, enriched_data = self._run_compromise_workflow(
+        compromise_workflow_results = self._run_compromise_workflow(
             event, self.__class__.__name__
         )
-        return results, enriched_data
+
+        action_results = compromise_workflow_results["action_results"]
+        enriched_data = compromise_workflow_results["enriched_data"]
+        return {"action_results": action_results, "enriched_data": enriched_data}

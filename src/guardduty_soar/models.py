@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, TypedDict
+from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 
 class Response(TypedDict):
@@ -101,3 +101,13 @@ class ActionResult(ActionResponse):
     """
 
     action_name: str
+
+
+class PlaybookResult(TypedDict):
+    """
+    Models the standardized return type for all playbook 'run' methods,
+    replacing the more complex tuple.
+    """
+
+    action_results: List[ActionResult]
+    enriched_data: Optional[Dict[str, Any]]

@@ -20,6 +20,7 @@ def test_ec2_unprotected_port_playbook_e2e(
     valid_guardduty_event,
     e2e_notification_channel,
     real_app_config,
+    sqs_poller,
 ):
     """
     Tests the full EC2 Unprotected Port playbook, verifying that a malicious IP
@@ -27,7 +28,6 @@ def test_ec2_unprotected_port_playbook_e2e(
     """
     session = boto3.Session()
     ec2_client = session.client("ec2")
-    sqs_client = session.client("sqs")
 
     # Get resource IDs from our fixtures
     test_resources = temporary_sg_with_public_rule
@@ -94,25 +94,5 @@ def test_ec2_unprotected_port_playbook_e2e(
     logger.info(f"Public access rule was successfully removed from SG {sg_id}.")
 
     # Verify SNS notifications were sent
-    all_messages = []
-    timeout = 20
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        messages = sqs_client.receive_message(
-            QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=2
-        ).get("Messages", [])
-        if messages:
-            all_messages.extend(messages)
-            entries = [
-                {"Id": m["MessageId"], "ReceiptHandle": m["ReceiptHandle"]}
-                for m in messages
-            ]
-            sqs_client.delete_message_batch(QueueUrl=queue_url, Entries=entries)
-        if len(all_messages) >= 2:
-            break
-        time.sleep(1)
-
-    assert (
-        len(all_messages) >= 2
-    ), "Did not receive the expected number of notifications."
+    all_messages = sqs_poller(queue_url=queue_url, expected_count=2)
     logger.info("SNS notifications were successfully verified via SQS.")

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List
 
 from guardduty_soar.actions.ec2.block import BlockMaliciousIpAction
 from guardduty_soar.actions.ec2.enrich import EnrichFindingWithInstanceMetadataAction
@@ -11,7 +11,7 @@ from guardduty_soar.actions.ec2.tag import TagInstanceAction
 from guardduty_soar.actions.ec2.terminate import TerminateInstanceAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import ActionResult, GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import BasePlaybook
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class EC2BasePlaybook(BasePlaybook):
 
     def _run_compromise_workflow(
         self, event: GuardDutyEvent, playbook_name: str
-    ) -> Tuple[List[ActionResult], Optional[Dict[str, Any]]]:
+    ) -> PlaybookResult:
         results: List[ActionResult] = []
         enriched_data = None
 
@@ -88,7 +88,7 @@ class EC2BasePlaybook(BasePlaybook):
                 f"QuarantineInstanceProfileAction failed: {error_details}."
             )
         results.append({**result, "action_name": "QuarantineInstance"})
-        logger.info("Successfully quarantined instance.")
+        logger.info("Successfully quarantined instance profile.")
 
         # Step 4: Create snapshots of all attached EBS volumes. Programmatically
         # checks for number and if any exists and iterates over them all. As we
@@ -129,4 +129,4 @@ class EC2BasePlaybook(BasePlaybook):
 
         logger.info(f"Playbook execution finished for {playbook_name}.")
 
-        return results, enriched_data
+        return {"action_results": results, "enriched_data": enriched_data}

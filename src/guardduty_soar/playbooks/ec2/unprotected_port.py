@@ -1,8 +1,8 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List
 
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import ActionResult, GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
@@ -10,15 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 @register_playbook("Recon:EC2/PortProbeUnprotectedPort")
-class EC2UnprotectedPort(EC2BasePlaybook):
+class EC2UnprotectedPortPlaybook(EC2BasePlaybook):
     """
     This playbook class handles the finding related to an
     unprotected port being probed on an EC2 instance.
     """
 
-    def run(
-        self, event: GuardDutyEvent
-    ) -> Tuple[List[ActionResult], Optional[Dict[str, Any]]]:
+    def run(self, event: GuardDutyEvent) -> PlaybookResult:
         logger.info(
             f"Executing EC2 Unprotected Port playbook for instance: {event['Resource']['InstanceDetails']['InstanceId']}"
         )
@@ -77,4 +75,4 @@ class EC2UnprotectedPort(EC2BasePlaybook):
         results.append({**result, "action_name": "RemovePublicAccess"})
         logger.info("Successfully removed public access rules.")
 
-        return results, enriched_data
+        return {"action_results": results, "enriched_data": enriched_data}

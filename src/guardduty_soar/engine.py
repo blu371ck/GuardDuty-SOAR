@@ -67,7 +67,9 @@ class Engine:
             self.notification_manager.send_starting_notification(
                 self.event, playbook_name
             )
-            action_results, enriched_data = playbook.run(self.event)
+            playbook_result = playbook.run(self.event)
+            action_results = playbook_result["action_results"]
+            enriched_data = playbook_result["enriched_data"]
 
         # TODO Currently raising an exception for not having a playbook found.
         # Will later be adding functionality to allow end-users to pick

@@ -34,10 +34,10 @@ def test_handle_finding_success(
     Tests the full success path of the engine's handle_finding method.
     """
     mock_playbook = MagicMock()
-    mock_playbook.run.return_value = (
-        [],
-        {"enriched": "data"},
-    )  # Mock the playbook's return value
+    mock_playbook.run.return_value = {
+        "action_results": [],
+        "enriched_data": {"enriched": "data"},
+    }  # Mock the playbook's return value
     mock_get_playbook.return_value = mock_playbook
 
     engine = Engine(guardduty_finding_detail, mock_app_config)

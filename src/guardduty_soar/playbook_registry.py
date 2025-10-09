@@ -1,10 +1,10 @@
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Callable, Dict, Type
 
 import boto3
 
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import ActionResult, GuardDutyEvent
+from guardduty_soar.models import GuardDutyEvent, PlaybookResult
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,5 @@ class BasePlaybook:
         self.config = config
         self.session = boto3.Session()
 
-    def run(
-        self, event: GuardDutyEvent
-    ) -> Tuple[List[ActionResult], Optional[Dict[str, Any]]]:
+    def run(self, event: GuardDutyEvent) -> PlaybookResult:
         raise NotImplementedError
