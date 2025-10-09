@@ -1,101 +1,126 @@
 # Testing Setup
 
-This workflow is for developers who want to contribute to the codebase, run tests, and manage dependencies.
+## Testing Guide
 
-1. Clone the repository and move into the directory
+This project uses a comprehensive testing strategy divided into three categories: **unit**, **integration**, and **end-to-end (E2E)** tests. We use <mark style="color:$primary;">`pytest`</mark> as our test runner and <mark style="color:$primary;">`uv`</mark> for managing our virtual environment and dependencies.
 
-```bash
-git clone https://github.com/blu371ck/GuardDuty-SOAR.git
-cd GuardDuty-SOAR
-```
+* **Unit Tests**: Fast, isolated tests that check a single piece of code (like an Action or a helper function) without any external dependencies.
+* **Integration Tests**: Tests that verify a single Action against a live AWS service in an isolated, temporary environment. These require AWS credentials. (Can take some time, it is recommended to target specific changed files or new files to reduce time.)
+* **E2E Tests**: The most comprehensive tests. They simulate a full playbook run from a mock GuardDuty event to the final outcome, interacting with multiple live AWS services.
 
-2. Create a virtual env:
+### 1. Initial Setup
 
-```
-uv venv
-```
+Before you can run the tests, you need to set up your environment and provide configuration for the tests that interact with AWS.
 
-3. Setting up the Development Environment Install all production and development dependencies from the lock file. This ensures your environment is identical to the one used in CI.
+#### Environment and Dependencies
 
-```bash
-# Install all dependencies
-uv pip sync -r requirements-dev.txt
+All commands should be run from the root of the project directory.
 
-# Install the guardduty-soar package itself in "editable" mode
-uv pip install -e .
-```
+1.  Create a virtual environment using <mark style="color:$primary;">`uv`</mark>:
 
-#### Dependency Management:
+    ```bash
+    uv venv
+    ```
+2. Activate the virtual environment:
+   *   On Windows (PowerShell):
 
-Do not manually edit the requirements.txt files. All dependencies are managed in pyproject.toml.
+       ```powershell
+       .venv\Scripts\Activate.ps1
+       ```
+   *   On macOS/Linux:
 
-* Add the new package to the appropriate list in pyproject.toml.
-* Re-compile the lock files:
+       ```bash
+       source .venv/bin/activate
+       ```
+3.  Install all required packages: This command installs both production and development dependencies.
 
-```bash
-# Update production requirements
-uv pip compile pyproject.toml -o requirements.txt
+    ```bash
+    uv pip sync requirements.txt requirements-dev.txt
+    ```
 
-# Update development requirements
-uv pip compile pyproject.toml --extra dev -o requirements-dev.txt
-```
+#### Test Configuration (<mark style="color:$primary;">`.env`</mark> file)
 
-Sync your local environment:
+The integration and E2E tests require credentials and specific AWS resource ARNs to run. These are managed via a <mark style="color:$primary;">`.env`</mark> file.
 
-```bash
-uv pip sync -r requirements-dev.txt
-```
+1.  Copy the example file: In the project root, copy the <mark style="color:$primary;">`.env.example`</mark> file to a new file named <mark style="color:$primary;">`.env`</mark>.
 
-Commit the changes to pyproject.toml and both requirements files.
+    ```bash
+    # On Windows
+    copy .env.example .env
 
-### Running Tests&#x20;
+    # On macOS/Linux
+    cp .env.example .env
+    ```
 
-There are three types of tests in this application, unit tests, integration tests and e2e (end-to-end) tests.
+    > Note: The <mark style="color:$primary;">`.env`</mark> file is listed in <mark style="color:$primary;">`.gitignore`</mark> and will never be committed to source control.
+2.  Fill in your values: Open the new <mark style="color:$primary;">`.env`</mark> file and replace the placeholder values with resources from your personal AWS test account. The file will look like this:
 
-#### Unit Tests
+    ```bash
+    # Environment variables for running GuardDuty SOAR tests
 
-The unit tests are simple, utilizing mocking to test functionality in isolation without requiring any actual infrastructure.
+    GD_AWS_REGION="us-east-1"
+    GD_LOG_LEVEL="DEBUG"
+    GD_BOTO_LOG_LEVEL="WARNING" # Change to DEBUG for verbose AWS logs
 
-To run unit tests, run:
+    # Notifications
+    GD_ALLOW_SES="true"
+    GD_REGISTERED_EMAIL_ADDRESS="your-verified-email@example.com"
+    GD_ALLOW_SNS="true"
+    GD_SNS_TOPIC_ARN="arn:aws:sns:us-east-1:123456789012:YourTestTopic"
+
+    # EC2 Actions
+    GD_QUARANTINE_SG_ID="sg-xxxxxxxxxxxxxxxxx"
+    GD_IAM_DENY_ALL_POLICY_ARN="arn:aws:iam::123456789012:policy/YourDenyPolicy"
+    GD_ALLOW_TERMINATE="true"
+    GD_ALLOW_REMOVE_PUBLIC_ACCESS="true"
+    ```
+
+> Note: A mapping of all testing environment configurations to production configurations is provided in the accompanying sections.
+
+### 2. Running the Tests
+
+We use <mark style="color:$primary;">`uv`</mark> as a task runner to provide simple shortcuts for running different test categories.
+
+#### Running Unit Tests
+
+These are fast and run locally without needing AWS credentials.
 
 ```bash
 uv run pytest -m "not integration and not e2e"
 ```
 
-To add new unit tests, simply follow the structure and insert them into the <mark style="color:$primary;">`/tests`</mark> directory. Ensure you do not put any unit tests inside the <mark style="color:$primary;">`integration/`</mark> or <mark style="color:$primary;">`e2e/`</mark> folders, as those are dedicated specifically for those kinds of tests.
+#### Running Integration Tests
 
-#### Integration testing
-
-**Integration Tests** interact with real AWS resources and require valid AWS credentials. They also require you to configure a <mark style="color:$primary;">`gd.test.cfg`</mark> file. For integration the only item we truly require is that you provide a testing subnet, named <mark style="color:$primary;">`testing-subnet`</mark>. As the tests grow and encompass more services, these requirements may change and increase.
-
-To create a testing configuration:
-
-1. Copy the example config: <mark style="color:$primary;">`cp gd.test.cfg.example gd.test.cfg`</mark>
-2. Edit <mark style="color:$primary;">`gd.test.cfg`</mark> and fill in the values for your AWS test account.
-3. Run the integration tests:
-
-To run integration tests run
+These tests interact with live AWS services and require your <mark style="color:$primary;">`.env`</mark> file to be correctly configured and your terminal to have active AWS credentials.
 
 ```bash
 uv run pytest -m "integration"
 ```
 
-**Since integration tests spin up real AWS resources, and we tear them down at the end. These tests can take some time to complete.**
+#### Running End-to-End (E2E) Tests
 
-#### **End-to-end (E2E) Tests**
-
-**E2E Tests** are created for each playbook. Going through every action and step to ensure it works in the cloud. They are appropriately named after the playbook they test and can be ran in bulk with:
+These are the most comprehensive tests, simulating a full playbook. They also require a configured <mark style="color:$primary;">`.env`</mark> file and active AWS credentials.
 
 ```bash
 uv run pytest -m "e2e"
 ```
 
-E2E tests also spin up AWS infrastructure to test out the entire playbook. So, each E2E test has setup and teardown just like integration tests. They do take some time.
+### 3. Advanced Test Execution
 
-### Development Verbosity
+For debugging, you may want to run a specific test file or function. You can do this by calling <mark style="color:$primary;">`pytest`</mark> directly.
 
-When running any tests, if you would like to see more logging and information about what is going on run:
+*   To run a single file:
 
-```bash
-uv run pytest -s -m <test-specific-command-here>
-```
+    ```bash
+    uv run pytest tests/e2e/ec2/test_e2e_ec2_instance_compromise.py
+    ```
+*   To run a single test by name (using the <mark style="color:$primary;">`-k`</mark> flag):
+
+    ```bash
+    uv run pytest -k "test_remove_public_access_integration"
+    ```
+*   To see <mark style="color:$primary;">log</mark> statements from tests and application code: Add the <mark style="color:$primary;">`-s`</mark> flag to any <mark style="color:$primary;">`pytest`</mark> command.
+
+    ```bash
+    uv run pytest -s -m "e2e"
+    ```

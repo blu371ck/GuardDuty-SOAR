@@ -28,7 +28,7 @@ uv venv
 
 ### Production Deployment
 
-The goal of a production deployment is to create a lean .zip file containing only the application code and its production dependencies, suitable for AWS Lambda.
+The goal of a production deployment is to create a lean <mark style="color:$primary;">`.zip`</mark> file containing only the application code and its production dependencies, suitable for AWS Lambda.
 
 1. Build the Production Artifact This process involves installing production dependencies into a temporary directory and then packaging them with your source code.
 2. Create a build directory:
@@ -43,13 +43,13 @@ mkdir -p build/dist
 uv pip install -r requirements.txt --target build/dist/package
 ```
 
-3. Copy your application code: Copy the guardduty\_soar package from the src directory into the package directory.
+3. Copy your application code: Copy the <mark style="color:$primary;">`guardduty_soar`</mark> package from the <mark style="color:$primary;">`src`</mark> directory into the package directory.
 
 ```bash
 cp -r src/guardduty_soar build/dist/package/
 ```
 
-4. Create the Lambda deployment package: Navigate into the package directory and create a .zip file of its contents.
+4. Create the Lambda deployment package: Navigate into the package directory and create a <mark style="color:$primary;">`.zip`</mark> file of its contents.
 
 ```bash
 cd build/dist/package
