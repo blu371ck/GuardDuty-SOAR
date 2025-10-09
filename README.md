@@ -22,3 +22,20 @@ This project is built with a focus on modern software architecture, scalability,
   -  __Unit Tests__: Using botocore.stub to mock the AWS API for fast, isolated testing of individual actions and components.
   -  __Integration Tests__: A dedicated suite that runs against a non-production AWS account to validate real-world interactions with
 
+## Project Roadmap & Status
+
+This project is developed in stages. Here is a high-level overview of our progress.
+
+| Alpha | Beta | Maintenance |
+| :--- | :--- | :--- |
+| **Tasks:** Playbook and Action Creation | **Tasks:** Refactoring, Live Testing and Bug Fixes | **Tasks:** Issues, Documentation and Enhancements |
+| ✅ EC2 Findings | ☐ Code refactoring (where applicable) | ☐ Reported Issues |
+| ☐ IAM Findings | ☐ Test refactoring (where applicable) | ☐ Documentation refactoring and updating |
+| ☐ Attack Sequence Findings | ☐ Live Terraform Testing | ☐ Feature request enhancements |
+| ☐ S3 Protection Findings | ☐ Bug Fixes (Continuous) | ☐ Bug Fixes (Continuous) |
+| ☐ EKS Protection Findings | ☐ Documentation Rough | ☐ |
+| ☐ Runtime Monitoring Findings | ☐ Light Enhancements | ☐ |
+| ☐ Malware Protection for EC2 Findings | ☐ | ☐ |
+| ☐ Malware Protection for S3 Findings | ☐ | ☐ |
+| ☐ RDS Protection Findings | ☐ | ☐ |
+| ☐ Lambda Protection Findings | ☐ | ☐ |
