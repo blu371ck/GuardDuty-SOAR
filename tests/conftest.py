@@ -541,8 +541,8 @@ def ssh_brute_force_finding():
             "ResourceType": "Instance",
             "InstanceDetails": {
                 "InstanceId": "i-99999999",
-                "NetworkInterfaces": [{"SubnetId": "subnet-99999999"}]
-            }
+                "NetworkInterfaces": [{"SubnetId": "subnet-99999999"}],
+            },
         },
         "Service": {
             "Action": {
@@ -550,10 +550,10 @@ def ssh_brute_force_finding():
                 "NetworkConnectionAction": {
                     "ConnectionDirection": "INBOUND",
                     "Protocol": "TCP",
-                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.0"}
-                }
+                    "RemoteIpDetails": {"IpAddressV4": "198.51.100.0"},
+                },
             },
-            "ResourceRole": "TARGET" # Default to TARGET, we override in tests if needed
+            "ResourceRole": "TARGET",  # Default to TARGET, we override in tests if needed
         },
         "Severity": 5,
         "Title": "SSH brute force attacks against i-99999999.",
