@@ -9,7 +9,7 @@ from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 logger = logging.getLogger(__name__)
 
 
-@register_playbook("Recon:EC2/PortProbeUnprotectedPort")
+@register_playbook("Recon:EC2/PortProbeUnprotectedPort", "Recon:EC2/PortProbeEMRUnprotectedPort")
 class EC2UnprotectedPortPlaybook(EC2BasePlaybook):
     """
     This playbook class handles the finding related to an
