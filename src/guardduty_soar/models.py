@@ -63,7 +63,7 @@ class ActionResponse(TypedDict):
     classes.
     """
 
-    status: Literal["success", "error"]
+    status: Literal["success", "error", "skipped"]
     details: Any
 
 

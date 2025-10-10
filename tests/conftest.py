@@ -739,3 +739,26 @@ def temporary_iam_user_with_risky_policy(aws_region):
                 UserName=user_name, PolicyName=inline_policy_name
             )
             iam_client.delete_user(UserName=user_name)
+
+
+@pytest.fixture
+def principal_identity_factory():
+    """A factory to create the input dictionary for the tag action."""
+
+    def _factory(user_type: str, user_name: str):
+        return {
+            "user_type": user_type,
+            "user_name": user_name,
+        }
+
+    return _factory
+
+
+@pytest.fixture
+def mock_event():
+    """Provides a minimal mock GuardDuty event for tagging."""
+    return {
+        "Id": "test-finding-id",
+        "Type": "Test:IAMUser/TestFinding",
+        "Severity": 5.0,
+    }

@@ -8,6 +8,7 @@ import pytest
 from guardduty_soar.actions.iam.analyze import AnalyzePermissionsAction
 from guardduty_soar.actions.iam.details import GetIamPrincipalDetailsAction
 from guardduty_soar.actions.iam.history import GetCloudTrailHistoryAction
+from guardduty_soar.actions.iam.tag import TagIamPrincipalAction
 
 pytestmark = pytest.mark.integration
 
@@ -203,3 +204,87 @@ def test_analyze_permissions_skipped_integration(real_app_config):
 
     assert result["status"] == "success"
     logger.info("Successfully verified action is skipped when disabled")
+
+
+def test_tag_iam_user_integration(temporary_iam_user, real_app_config):
+    """
+    Tests that the action can successfully tag a live IAM User.
+    """
+    session = boto3.Session()
+    iam_client = session.client("iam")
+    user_name = temporary_iam_user["user_name"]
+
+    # Prepare inputs for the action
+    principal_identity = {"user_type": "IAMUser", "user_name": user_name}
+    mock_event = {
+        "Id": "test-finding-id-user",
+        "Type": "Test:IAMUser/TaggingTest",
+        "Severity": 7.5,  # HIGH
+    }
+
+    # Execute the action
+    action = TagIamPrincipalAction(session, real_app_config)
+    result = action.execute(
+        event=mock_event,
+        principal_identity=principal_identity,
+        playbook_name="IAMUserTaggingPlaybook",
+    )
+    assert result["status"] == "success"
+
+    # Verify the tags were actually applied in AWS
+    response = iam_client.list_user_tags(UserName=user_name)
+    tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
+
+    assert "GUARDDUTY-SOAR-ID" in tags
+    assert tags["SOAR-Finding-Severity"] == "HIGH"
+    assert tags["SOAR-Playbook"] == "IAMUserTaggingPlaybook"
+    logger.info(f"Successfully verified tags were applied to user {user_name}")
+
+
+def test_tag_iam_role_integration(temporary_iam_role, real_app_config):
+    """
+    Tests that the action can successfully tag a live IAM Role.
+    """
+    session = boto3.Session()
+    iam_client = session.client("iam")
+    role_name = temporary_iam_role["role_name"]
+
+    # Prepare inputs for the action
+    principal_identity = {"user_type": "Role", "user_name": role_name}
+    mock_event = {
+        "Id": "test-finding-id-role",
+        "Type": "Test:IAMRole/TaggingTest",
+        "Severity": 2.0,  # LOW
+    }
+
+    # Execute the action
+    action = TagIamPrincipalAction(session, real_app_config)
+    result = action.execute(
+        event=mock_event,
+        principal_identity=principal_identity,
+        playbook_name="IAMRoleTaggingPlaybook",
+    )
+    assert result["status"] == "success"
+
+    # Verify the tags were actually applied in AWS
+    response = iam_client.list_role_tags(RoleName=role_name)
+    tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
+
+    assert tags["GUARDDUTY-SOAR-ID"] == "test-finding-id-role"
+    assert tags["SOAR-Finding-Severity"] == "LOW"
+    assert tags["SOAR-Status"] == "Remediation-In-Progress"
+    logger.info(f"Successfully verified tags were applied to role {role_name}")
+
+
+def test_tag_skips_root_user_integration(real_app_config):
+    """
+    Tests that the action correctly skips the Root principal, which cannot be tagged.
+    """
+    session = boto3.Session()
+    principal_identity = {"user_type": "Root", "user_name": "root"}
+
+    action = TagIamPrincipalAction(session, real_app_config)
+    result = action.execute(event={}, principal_identity=principal_identity)
+
+    assert result["status"] == "skipped"
+    logger.info("Successfully verified action skips the Root user")
