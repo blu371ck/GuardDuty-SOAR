@@ -644,7 +644,10 @@ def temporary_iam_user(aws_region):
                     "Statement": [
                         {
                             "Effect": "Allow",
-                            "Action": "ec2:DescribeInstances",
+                            "Action": [
+                                "ec2:DescribeInstances",
+                                "iam:ListAccountAliases",
+                            ],
                             "Resource": "*",
                         }
                     ],

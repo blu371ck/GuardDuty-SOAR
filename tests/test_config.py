@@ -68,3 +68,71 @@ def test_config_handles_missing_file_gracefully(mocker):
         assert isinstance(config, AppConfig)
         # This should now correctly use the fallback of "INFO"
         assert config.log_level == "INFO"
+
+
+@pytest.mark.parametrize(
+    "config_value, expected_result",
+    [
+        ("30", 30),  # Test a valid value within the range
+        ("1", 1),  # Test the minimum boundary
+        ("50", 50),  # Test the maximum boundary
+        ("0", 1),  # Test clamping a value below the minimum
+        ("100", 50),  # Test clamping a value above the maximum
+        ("abc", 25),  # Test fallback to default for a non-integer value
+        (None, 25),  # Test fallback to default when the key is missing
+    ],
+    ids=[
+        "valid_value",
+        "min_boundary",
+        "max_boundary",
+        "clamp_below_min",
+        "clamp_above_max",
+        "invalid_string_fallback",
+        "missing_key_fallback",
+    ],
+)
+def test_cloudtrail_history_max_results_validation(
+    config_value, expected_result, mocker
+):
+    """
+    Tests the validation and clamping logic for cloudtrail_history_max_results.
+    """
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    mocker.patch.dict("os.environ", clear=True)
+
+    # Build the mock config content based on the test case
+    mock_config_content = "[General]\nlog_level = INFO\n"
+    if config_value is not None:
+        mock_config_content += f"[IAM]\ncloudtrail_history_max_results = {config_value}"
+
+    with patch("builtins.open", mock_open(read_data=mock_config_content)):
+        with patch("os.path.exists", return_value=True):
+            get_config.cache_clear()
+            config = get_config()
+
+            assert config.cloudtrail_history_max_results == expected_result
+
+
+def test_cloudtrail_history_max_results_from_env_var(mocker):
+    """
+    Tests that the cloudtrail_history_max_results setting is correctly
+    read from an environment variable, overriding the config file.
+    """
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    # Set the environment variable
+    mocker.patch.dict(
+        "os.environ", {"GD_CLOUDTRAIL_HISTORY_MAX_RESULTS": "42"}, clear=True
+    )
+
+    # Config file has a different value to prove the override works
+    mock_config_content = """
+[IAM]
+cloudtrail_history_max_results = 10
+    """
+    with patch("builtins.open", mock_open(read_data=mock_config_content)):
+        with patch("os.path.exists", return_value=True):
+            get_config.cache_clear()
+            config = get_config()
+
+            # The value from the environment variable (42) should be used
+            assert config.cloudtrail_history_max_results == 42

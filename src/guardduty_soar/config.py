@@ -24,6 +24,7 @@ class AppConfig:
     registered_email_address: Optional[str]
     allow_sns: bool
     sns_topic_arn: Optional[str]
+    cloudtrail_history_max_results: int
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -33,6 +34,9 @@ def get_config() -> AppConfig:
     """
     Parses config files and returns a cached, singleton instance of the AppConfig.
     """
+    CLOUDTRAIL_MAX = 50
+    CLOUDTRAIL_MIN = 1
+    CLOUDTRAIL_DEFAULT = 25
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
@@ -42,6 +46,20 @@ def get_config() -> AppConfig:
 
     if os.path.exists(config_file):
         config.read(config_file)
+
+    raw_ct_results = os.environ.get("GD_CLOUDTRAIL_HISTORY_MAX_RESULTS") or config.get(
+        "IAM", "cloudtrail_history_max_results", fallback=None
+    ) or str(CLOUDTRAIL_DEFAULT)
+
+    try:
+        validated_ct_results = int(raw_ct_results)
+        # Use max() and min() to force the constraint
+        validated_ct_results = max(
+            CLOUDTRAIL_MIN, min(validated_ct_results, CLOUDTRAIL_MAX)
+        )
+    except (ValueError, TypeError):
+        # If the value is not a valid integer default to default
+        validated_ct_results = CLOUDTRAIL_DEFAULT
 
     # Helper to parse a list from the config
     def get_list(section, key):
@@ -68,6 +86,7 @@ def get_config() -> AppConfig:
         or config.get(
             "General", "aws_region", fallback=boto3.Session().region_name or "us-east-1"
         ),
+        cloudtrail_history_max_results=validated_ct_results,
         quarantine_sg_id=os.environ.get("GD_QUARANTINE_SG_ID")
         or config.get("EC2", "quarantine_sg_id", fallback=None),
         iam_deny_all_policy_arn=os.environ.get("GD_IAM_DENY_ALL_POLICY_ARN")
