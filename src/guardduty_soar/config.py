@@ -25,6 +25,7 @@ class AppConfig:
     allow_sns: bool
     sns_topic_arn: Optional[str]
     cloudtrail_history_max_results: int
+    analyze_iam_permissions: bool
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -47,9 +48,11 @@ def get_config() -> AppConfig:
     if os.path.exists(config_file):
         config.read(config_file)
 
-    raw_ct_results = os.environ.get("GD_CLOUDTRAIL_HISTORY_MAX_RESULTS") or config.get(
-        "IAM", "cloudtrail_history_max_results", fallback=None
-    ) or str(CLOUDTRAIL_DEFAULT)
+    raw_ct_results = (
+        os.environ.get("GD_CLOUDTRAIL_HISTORY_MAX_RESULTS")
+        or config.get("IAM", "cloudtrail_history_max_results", fallback=None)
+        or str(CLOUDTRAIL_DEFAULT)
+    )
 
     try:
         validated_ct_results = int(raw_ct_results)
@@ -103,4 +106,6 @@ def get_config() -> AppConfig:
         or config.getboolean("Notifications", "allow_sns", fallback=False),
         sns_topic_arn=os.environ.get("GD_SNS_TOPIC_ARN")
         or config.get("Notifications", "sns_topic_arn", fallback=None),
+        analyze_iam_permissions=os.environ.get("GD_ANALYZE_IAM_PERMISSIONS") is not None
+        or config.getboolean("IAM", "analyze_iam_permissions", fallback=True),
     )

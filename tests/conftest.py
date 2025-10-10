@@ -698,3 +698,44 @@ def temporary_iam_role(aws_region):
         logger.info(f"Tearing down temporary IAM role {role_name}...")
         if "role_name" in resources:
             iam_client.delete_role(RoleName=role_name)
+
+
+@pytest.fixture(scope="function")
+def temporary_iam_user_with_risky_policy(aws_region):
+    """Creates a temporary IAM user with a risky inline policy."""
+    iam_client = boto3.client("iam", region_name=aws_region)
+    user_name = f"gd-soar-risky-user-{int(time.time())}"
+    inline_policy_name = "gd-soar-risky-inline-policy"
+    resources = {}
+
+    try:
+        logger.info(f"Setting up temporary risky IAM user {user_name}...")
+        iam_client.create_user(UserName=user_name)
+        resources = {"user_name": user_name}
+
+        # Attach a policy with wildcard permissions
+        iam_client.put_user_policy(
+            UserName=user_name,
+            PolicyName=inline_policy_name,
+            PolicyDocument=json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*",
+                        }
+                    ],
+                }
+            ),
+        )
+        yield resources
+
+    finally:
+        logger.info(f"Tearing down temporary risky IAM user {user_name}...")
+        if "user_name" in resources:
+            iam_client.delete_user_policy(
+                UserName=user_name, PolicyName=inline_policy_name
+            )
+            iam_client.delete_user(UserName=user_name)

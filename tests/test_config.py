@@ -136,3 +136,29 @@ cloudtrail_history_max_results = 10
 
             # The value from the environment variable (42) should be used
             assert config.cloudtrail_history_max_results == 42
+
+
+def test_config_analyze_iam_permissions_flag(mocker):
+    """
+    Tests that the analyze_iam_permissions boolean flag is read correctly.
+    """
+    mocker.patch("guardduty_soar.config.boto3.Session")
+    mocker.patch.dict("os.environ", clear=True)
+
+    mock_config_content = """
+[IAM]
+analyze_iam_permissions = false
+    """
+    with patch("builtins.open", mock_open(read_data=mock_config_content)):
+        with patch("os.path.exists", return_value=True):
+            get_config.cache_clear()
+            config = get_config()
+
+            # It should read 'false' from the config file
+            assert config.analyze_iam_permissions is False
+
+            # Test the default fallback is True
+            get_config.cache_clear()
+            with patch("builtins.open", mock_open(read_data="[General]")):
+                config_with_fallback = get_config()
+                assert config_with_fallback.analyze_iam_permissions is True

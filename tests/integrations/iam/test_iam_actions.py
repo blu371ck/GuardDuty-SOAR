@@ -1,9 +1,11 @@
+import dataclasses
 import logging
 import time
 
 import boto3
 import pytest
 
+from guardduty_soar.actions.iam.analyze import AnalyzePermissionsAction
 from guardduty_soar.actions.iam.details import GetIamPrincipalDetailsAction
 from guardduty_soar.actions.iam.history import GetCloudTrailHistoryAction
 
@@ -69,7 +71,6 @@ def test_get_cloudtrail_history_integration(temporary_iam_user, real_app_config)
     sts_client = session.client("sts")
     account_id = sts_client.get_caller_identity()["Account"]
     user_name = temporary_iam_user["user_name"]
-    principal_arn = f"arn:aws:iam::{account_id}:user/{user_name}"
 
     # Step 1: Create a temporary access key for the user to perform an action.
     logger.info(f"Creating access key for temporary user {user_name}...")
@@ -121,3 +122,84 @@ def test_get_cloudtrail_history_integration(temporary_iam_user, real_app_config)
         # Step 6: Clean up the temporary access key.
         logger.info(f"Cleaning up access key for user {user_name}...")
         iam_client.delete_access_key(UserName=user_name, AccessKeyId=access_key_id)
+
+
+def test_analyze_permissions_risky_integration(
+    temporary_iam_user_with_risky_policy, real_app_config
+):
+    """
+    Tests that the action correctly identifies a risky policy on a live IAM user.
+    """
+    user_name = temporary_iam_user_with_risky_policy["user_name"]
+    session = boto3.Session()
+
+    # Step 1: Run the prerequisite action to get the principal's policies
+    details_action = GetIamPrincipalDetailsAction(session, real_app_config)
+    details_result = details_action.execute(
+        event={}, principal_details={"user_type": "IAMUser", "user_name": user_name}
+    )
+    assert details_result["status"] == "success"
+
+    # Step 2: Run the analysis action on the results of the first action
+    analyze_action = AnalyzePermissionsAction(session, real_app_config)
+    analyze_result = analyze_action.execute(
+        event={}, principal_policies=details_result["details"]
+    )
+
+    # Step 3: Validate the analysis
+    assert analyze_result["status"] == "success"
+    risks = analyze_result["details"]["risks_found"]
+    assert len(risks) == 1
+    assert "InlinePolicy: gd-soar-risky-inline-policy" in risks
+    assert (
+        "Allows all actions ('*') on all resources ('*')."
+        in risks["InlinePolicy: gd-soar-risky-inline-policy"]
+    )
+    logger.info(f"Successfully verified risky policy for user {user_name}")
+
+
+def test_analyze_permissions_clean_integration(temporary_iam_user, real_app_config):
+    """
+    Tests that the action finds no risks for a user with well-scoped policies.
+    """
+    user_name = temporary_iam_user["user_name"]
+    session = boto3.Session()
+
+    # Step 1: Get the principal's policies
+    details_action = GetIamPrincipalDetailsAction(session, real_app_config)
+    details_result = details_action.execute(
+        event={}, principal_details={"user_type": "IAMUser", "user_name": user_name}
+    )
+    assert details_result["status"] == "success"
+
+    # Step 2: Run the analysis action
+    analyze_action = AnalyzePermissionsAction(session, real_app_config)
+    analyze_result = analyze_action.execute(
+        event={}, principal_policies=details_result["details"]
+    )
+
+    # Step 3: Validate that no risks were found
+    assert analyze_result["status"] == "success"
+    assert not analyze_result["details"][
+        "risks_found"
+    ]  # The risks dict should be empty
+    logger.info(f"Successfully verified no risks for clean user {user_name}")
+
+
+def test_analyze_permissions_skipped_integration(real_app_config):
+    """
+    Tests that the action correctly skips execution if disabled in the config.
+    """
+    # Create a copy of the real config and disable the action
+    disabled_config = dataclasses.replace(
+        real_app_config, analyze_iam_permissions=False
+    )
+    session = boto3.Session()
+
+    action = AnalyzePermissionsAction(session, disabled_config)
+    result = action.execute(
+        event={}, principal_policies={}
+    )  # Policies don't matter here
+
+    assert result["status"] == "success"
+    logger.info("Successfully verified action is skipped when disabled")

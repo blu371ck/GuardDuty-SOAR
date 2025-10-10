@@ -24,9 +24,31 @@ class GetIamPrincipalDetailsAction(BaseAction):
     def _get_user_details(self, user_name: str) -> Dict[str, Any]:
         """Helper method to gather details for an IAM user."""
         user_info = self.iam_client.get_user(UserName=user_name)["User"]
-        attached_policies = self.iam_client.list_attached_user_policies(
+        attached_policies_metas = self.iam_client.list_attached_user_policies(
             UserName=user_name
         ).get("AttachedPolicies", [])
+
+        attached_policies = []
+        for policy_meta in attached_policies_metas:
+            policy_arn = policy_meta["PolicyArn"]
+            try:
+                policy = self.iam_client.get_policy(PolicyArn=policy_arn)["Policy"]
+                version_id = policy["DefaultVersionId"]
+                policy_doc = self.iam_client.get_policy_version(
+                    PolicyArn=policy_arn, VersionId=version_id
+                )["PolicyVersion"]["Document"]
+                attached_policies.append(
+                    {
+                        "PolicyName": policy["PolicyName"],
+                        "PolicyArn": policy_arn,
+                        "PolicyDocument": policy_doc,
+                    }
+                )
+            except ClientError as e:
+                logger.warning(
+                    f"Could not retrieve document for attached policy {policy_arn}: {e}."
+                )
+
         inline_policy_names = self.iam_client.list_user_policies(
             UserName=user_name
         ).get("PolicyNames", [])
