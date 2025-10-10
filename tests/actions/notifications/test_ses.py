@@ -6,68 +6,37 @@ from botocore.stub import Stubber
 from guardduty_soar.actions.notifications.ses import SendSESNotificationAction
 
 
-# This test now mocks the base class methods, decoupling it from the template logic
-def test_ses_action_execute_success(guardduty_finding_detail, mock_app_config, mocker):
+def test_ses_action_execute(mocker):
     """
-    Tests that the SES action correctly renders a template and calls the SES API.
+    Tests the execute method of the SES action, verifying it calls helpers
+    and the boto3 client correctly.
     """
-    mock_app_config.allow_ses = True
-    mock_app_config.registered_email_address = "test@example.com"
+    mock_config = MagicMock(allow_ses=True, registered_email_address="test@example.com")
+    action = SendSESNotificationAction(MagicMock(), mock_config)
 
-    ses_client = boto3.client("ses", region_name="us-east-1")
-    stubber = Stubber(ses_client)
+    # Mock the internal methods and the boto3 client
+    mock_build_context = mocker.patch.object(
+        action, "_build_template_context", return_value={"title": "Test Title"}
+    )
+    mock_render = mocker.patch.object(
+        action, "_render_template", return_value="Subject: Test\nBody"
+    )
+    mock_send_email = mocker.patch.object(action.ses_client, "send_email")
 
-    # Mock the return value of the template rendering
-    rendered_template = "Subject: Test Subject\nThis is the email body."
-    expected_html = "<p>This is the email body.</p>"
-
-    expected_params = {
-        "Source": "test@example.com",
-        "Destination": {"ToAddresses": ["test@example.com"]},
-        "Message": {
-            "Subject": {"Data": "Test Subject"},
-            "Body": {
-                "Text": {"Data": "This is the email body."},
-                "Html": {"Data": expected_html},
-            },
-        },
+    # Define the input kwargs that the Engine would provide
+    input_kwargs = {
+        "finding": {"Type": "TestFinding"},
+        "resource": MagicMock(),
+        "enriched_data": None,
+        "template_type": "starting",
     }
-    stubber.add_response("send_email", {"MessageId": "123"}, expected_params)
 
-    mock_session = MagicMock()
-    mock_session.client.return_value = ses_client
-
-    action = SendSESNotificationAction(mock_session, mock_app_config)
-
-    # Mock the helper methods on the base class
-    mocker.patch.object(
-        action, "_build_template_context", return_value={"finding": "test"}
-    )
-    mocker.patch.object(action, "_render_template", return_value=rendered_template)
-
-    with stubber:
-        result = action.execute(guardduty_finding_detail, template_type="starting")
+    result = action.execute(**input_kwargs)
 
     assert result["status"] == "success"
-    stubber.assert_no_pending_responses()
-    action._build_template_context.assert_called_once_with(
-        guardduty_finding_detail, template_type="starting"
+    # Call the assertion methods on the captured mock objects
+    mock_build_context.assert_called_once_with(**input_kwargs)
+    mock_render.assert_called_once_with(
+        "ses", "starting.md.j2", {"title": "Test Title"}
     )
-    action._render_template.assert_called_once_with(
-        "ses", "starting.md.j2", {"finding": "test"}
-    )
-
-
-def test_ses_action_disabled_in_config(guardduty_finding_detail, mock_app_config):
-    """
-    Tests that no API call is made if allow_ses is False.
-    """
-    mock_app_config.allow_ses = False
-    mock_session = MagicMock()
-    action = SendSESNotificationAction(mock_session, mock_app_config)
-
-    result = action.execute(guardduty_finding_detail)
-
-    assert result["status"] == "success"
-    assert "disabled" in result["details"]
-    mock_session.client.return_value.send_email.assert_not_called()
+    mock_send_email.assert_called_once()

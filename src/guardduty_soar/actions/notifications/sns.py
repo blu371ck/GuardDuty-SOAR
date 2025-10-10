@@ -18,9 +18,7 @@ class SendSNSNotificationAction(BaseNotificationAction):
         super().__init__(session, config)
         self.sns_client = self.session.client("sns")
 
-    def execute(
-        self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
-    ) -> ActionResponse:
+    def execute(self, **kwargs) -> ActionResponse:
         if not self.config.allow_sns:
             return {
                 "status": "success",
@@ -29,7 +27,7 @@ class SendSNSNotificationAction(BaseNotificationAction):
 
         logger.info("Executing SNS action.")
         try:
-            context = self._build_template_context(data, **kwargs)
+            context = self._build_template_context(**kwargs)
             template_type = kwargs.get("template_type", "starting")
 
             # Render the SNS-specific JSON template

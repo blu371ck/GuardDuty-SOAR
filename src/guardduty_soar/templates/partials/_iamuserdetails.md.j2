@@ -1,0 +1,21 @@
+- **User Name:** `{{ enriched_data.details.UserName }}`
+- **User ID:** `{{ enriched_data.details.UserId }}`
+- **ARN:** `{{ enriched_data.details.Arn }}`
+- **Created:** `{{ enriched_data.details.CreateDate }}`
+{% if enriched_data.details.PasswordLastUsed %}
+- **Password Last Used:** `{{ enriched_data.details.PasswordLastUsed }}`
+{% endif %}
+
+{% if enriched_data.attached_policies %}
+**Attached Policies:**
+{% for policy in enriched_data.attached_policies -%}
+{{ policy.PolicyName }} ({{ policy.PolicyArn }})
+{% endfor %}
+{% endif %}
+
+{% if enriched_data.inline_policies %}
+**Inline Policies:**
+{% for name, doc in enriched_data.inline_policies.items() -%}
+- {{ name }}
+{% endfor %}
+{% endif %}

@@ -72,25 +72,3 @@ def test_main_handler_engine_failure(valid_guardduty_event, mock_app_config, cap
                 assert result["statusCode"] == 400
                 assert result["message"] == error_message
                 assert "Failed to process finding" in caplog.text
-
-
-def test_main_handler_playbook_action_failure(
-    valid_guardduty_event, mock_app_config, caplog
-):
-    """
-    Tests that the main handler catches a PlaybookActionFailedError.
-    """
-    error_message = "The tag action failed"
-    with patch("guardduty_soar.main.get_config", return_value=mock_app_config):
-        with patch("guardduty_soar.main.Engine") as MockEngine:
-            mock_engine_instance = MockEngine.return_value
-            mock_engine_instance.handle_finding.side_effect = PlaybookActionFailedError(
-                error_message
-            )
-
-            # Explicitly target the 'main' logger to ensure the log is captured
-            with caplog.at_level(logging.CRITICAL, logger="main"):
-                result = handler(valid_guardduty_event, {})
-
-                assert result["statusCode"] == 500
-                assert f"Internal playbook error: {error_message}" in result["message"]

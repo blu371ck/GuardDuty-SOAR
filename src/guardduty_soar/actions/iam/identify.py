@@ -1,8 +1,10 @@
 import logging
+
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
+
 
 class IdentifyIamPrincipalAction(BaseAction):
     """
@@ -38,12 +40,14 @@ class IdentifyIamPrincipalAction(BaseAction):
                 "principal_id": principal_details.get("PrincipalId"),
                 "user_type": user_type,
                 "user_name": user_name,
-                "principal_arn": principal_arn
+                "principal_arn": principal_arn,
             }
 
-            logger.info(f"Successfully identified principal: {principal_arn or user_name}.")
+            logger.info(
+                f"Successfully identified principal: {principal_arn or user_name}."
+            )
             return {"status": "success", "details": result_details}
-        
+
         except KeyError as e:
             details = f"Finding is missing expected key path for principal identification: {e}."
             logger.error(details)

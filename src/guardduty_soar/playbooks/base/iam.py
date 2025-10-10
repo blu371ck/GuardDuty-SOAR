@@ -5,13 +5,14 @@ from guardduty_soar.playbook_registry import BasePlaybook
 
 logger = logging.getLogger(__name__)
 
+
 class IamForensicsPlaybook(BasePlaybook):
     """
     An intermediate base class for all playbooks that respond to IAM findings.
-    (Minus two that belong to ec2 credential theft, which are in 
+    (Minus two that belong to ec2 credential theft, which are in
     EC2InstanceCompromisePlaybook).
 
-    Inherits the boto3 session from BasePlaybook and initializes all relevant IAM 
+    Inherits the boto3 session from BasePlaybook and initializes all relevant IAM
     action classes.
     """
 

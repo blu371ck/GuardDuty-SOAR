@@ -9,6 +9,7 @@ from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import ActionResult, EnrichedEC2Finding, GuardDutyEvent
 from guardduty_soar.notifications.manager import NotificationManager
 from guardduty_soar.playbook_registry import get_playbook_instance
+from guardduty_soar.schemas import map_resource_to_model
 
 logger = logging.getLogger(__name__)
 
@@ -71,29 +72,52 @@ class Engine:
             action_results = playbook_result["action_results"]
             enriched_data = playbook_result["enriched_data"]
 
+            # Get the basic Pydantic model for the resource (EC2, IAM, etc.)
+            resource_model = map_resource_to_model(
+                self.event.get("Resource", {}),
+                instance_metadata=(
+                    enriched_data.get("instance_metadata") if enriched_data else None
+                ),
+            )
+
         # TODO Currently raising an exception for not having a playbook found.
         # Will later be adding functionality to allow end-users to pick
         # and choose which alerts trigger, making it no longer a valid
         # exception.
         except (ValueError, PlaybookActionFailedError) as e:
             logger.critical(f"Playbook execution failed for {playbook_name}: {e}.")
-            # Add the failure to the results for the final report.
+
             action_results.append(
                 {
                     "status": "error",
-                    "details": str(e),
-                    "action_name": "PlaybookExecution",
+                    "action_name": playbook_name,
+                    "details": f"Playbook failed with a critical error: {e}.",
                 }
             )
 
-        finally:
-            # This block is guaranteed to send a final notification regardless of outcome
-            final_notification_data = (
-                cast(EnrichedEC2Finding, enriched_data) if enriched_data else self.event
+            # This block ONLY handles failures.
+            resource_model = map_resource_to_model(self.event.get("Resource", {}))
+            self.notification_manager.send_complete_notification(
+                finding=self.event,
+                playbook_name=playbook_name,
+                action_results=action_results,
+                resource=resource_model,
+                enriched_data=enriched_data,
+            )
+
+        else:
+            # We still need to build the resource model for the notification
+            resource_model = map_resource_to_model(
+                self.event.get("Resource", {}),
+                instance_metadata=(
+                    enriched_data.get("instance_metadata") if enriched_data else None
+                ),
             )
 
             self.notification_manager.send_complete_notification(
-                data=final_notification_data,
+                finding=self.event,
                 playbook_name=playbook_name,
                 action_results=action_results,
+                resource=resource_model,
+                enriched_data=enriched_data,
             )

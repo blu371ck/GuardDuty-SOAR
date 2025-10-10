@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # that involves the same steps as another. For instance, these GuardDuty
 # finding types below, are all recommended for initiating a playbook for
 # a compromised EC2 instance. There is also two IAM findings here, that
-# pertain to a compromised EC2 instance as their severity is high, we 
+# pertain to a compromised EC2 instance as their severity is high, we
 # utilize this playbook for full forensics.
 @register_playbook(
     "Backdoor:EC2/C&CActivity.B",
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
     "UnauthorizedAccess:EC2/TorClient",
     "UnauthorizedAccess:EC2/TorRelay",
     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
-    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
+    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
 )
 class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
     """

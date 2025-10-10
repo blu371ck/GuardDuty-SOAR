@@ -1,13 +1,11 @@
 import logging
-from typing import Union
 
 import boto3
 import markdown
-from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.notifications.base import BaseNotificationAction
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import ActionResponse, EnrichedEC2Finding, GuardDutyEvent
+from guardduty_soar.models import ActionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +17,14 @@ class SendSESNotificationAction(BaseNotificationAction):
         super().__init__(session, config)
         self.ses_client = self.session.client("ses")
 
-    def execute(
-        self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
-    ) -> ActionResponse:
-        if not self.config.allow_ses:
-            return {
-                "status": "success",
-                "details": "SES notifications are disabled in config.",
-            }
+    def execute(self, **kwargs) -> ActionResponse:
         logger.info("Executing SES action.")
-        try:
-            context = self._build_template_context(data, **kwargs)
-            template_type = kwargs.get("template_type", "starting")
+        if not self.config.allow_ses:
+            return {"status": "success", "details": "SES notifications are disabled."}
 
+        try:
+            context = self._build_template_context(**kwargs)
+            template_type = kwargs.get("template_type", "starting")
             rendered_content = self._render_template(
                 "ses", f"{template_type}.md.j2", context
             )
@@ -48,14 +41,11 @@ class SendSESNotificationAction(BaseNotificationAction):
                     "Body": {"Text": {"Data": body}, "Html": {"Data": html_body}},
                 },
             )
-            details = "Successfully sent notification via SES."
-            logger.info(details)
-            return {"status": "success", "details": details}
-        except ClientError as e:
-            details = f"Failed to send SES email: {e}."
-            logger.error(details)
-            return {"status": "error", "details": details}
+            return {
+                "status": "success",
+                "details": "Successfully sent notification via SES.",
+            }
         except Exception as e:
-            details = f"An unexpected error occurred in SES action: {e}."
+            details = f"An unexpected error occurred in SES action: {e}"
             logger.error(details, exc_info=True)
             return {"status": "error", "details": details}

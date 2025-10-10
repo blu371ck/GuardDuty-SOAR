@@ -1,13 +1,13 @@
 import logging
 import os
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional
 
 import boto3
 import jinja2
 
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import ActionResponse, EnrichedEC2Finding, GuardDutyEvent
-from guardduty_soar.schemas import map_resource_to_model
+from guardduty_soar.models import ActionResponse, GuardDutyEvent
+from guardduty_soar.schemas import BaseResourceDetails, IamPrincipalInfo
 
 logger = logging.getLogger(__name__)
 
@@ -41,33 +41,28 @@ class BaseNotificationAction:
         return template.render(context)
 
     def _build_template_context(
-        self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
+        self,
+        finding: GuardDutyEvent,
+        resource: BaseResourceDetails,
+        enriched_data: Optional[Dict[str, Any]],
+        **kwargs,
     ) -> Dict[str, Any]:
-        """Creates a structured context dictionary for the templating engine."""
-        instance_metadata: Optional[Dict[str, Any]] = None
-        finding: GuardDutyEvent
-        logger.info("Building template context for messaging.")
-        # Use 'cast' to explicitly narrow the type for Mypy or it produces
-        # an error.
-        if "guardduty_finding" in data:
-            enriched_data = cast(EnrichedEC2Finding, data)
-            finding = enriched_data["guardduty_finding"]
-            instance_metadata = enriched_data.get("instance_metadata")
-        else:
-            finding = cast(GuardDutyEvent, data)
-
-        resource_details_model = map_resource_to_model(
-            finding.get("Resource", {}), instance_metadata=instance_metadata
-        )
+        """
+        This is a simple function that packages up pre-processed
+        data for the Jinja2 templating engine.
+        """
+        # If enriched data for an IAM principal exists, wrap it in our Pydantic model
+        iam_principal_info = None
+        if enriched_data and ("attached_policies" in enriched_data):
+            iam_principal_info = IamPrincipalInfo(**enriched_data)
 
         return {
             "finding": finding,
-            "playbook_name": kwargs.get("playbook_name", "UnknownPlaybook"),
-            "resource": resource_details_model,
+            "resource": resource,  # The basic Pydantic model for the resource
+            "enriched_data": iam_principal_info
+            or enriched_data,  # The rich enrichment data
             "completion_details": kwargs,
         }
 
-    def execute(
-        self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs
-    ) -> ActionResponse:
+    def execute(self, **kwargs) -> ActionResponse:
         raise NotImplementedError

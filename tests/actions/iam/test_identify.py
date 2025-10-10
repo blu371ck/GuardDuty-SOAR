@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
+
 from guardduty_soar.actions.iam.identify import IdentifyIamPrincipalAction
+
 
 def test_identify_iam_user(iam_finding_factory, mock_app_config):
     """Tests that a finding with a UserType of 'IAMUser' is parsed correctly."""
@@ -19,7 +21,9 @@ def test_identify_iam_user(iam_finding_factory, mock_app_config):
 
 def test_identify_assumed_role(iam_finding_factory, mock_app_config):
     """Tests that a finding with a UserType of 'AssumedRole' is parsed correctly."""
-    event = iam_finding_factory(user_type="AssumedRole", user_name="test-role-name/session-name")
+    event = iam_finding_factory(
+        user_type="AssumedRole", user_name="test-role-name/session-name"
+    )
     action = IdentifyIamPrincipalAction(MagicMock(), mock_app_config)
 
     result = action.execute(event)
@@ -47,7 +51,7 @@ def test_identify_principal_key_error(mock_app_config):
     """Tests that the action fails gracefully if the event is malformed."""
     malformed_event = {
         "AccountId": "123456789012",
-        "Resource": {} # Missing AccessKeyDetails
+        "Resource": {},  # Missing AccessKeyDetails
     }
     action = IdentifyIamPrincipalAction(MagicMock(), mock_app_config)
 

@@ -12,6 +12,7 @@ pytestmark = pytest.mark.e2e
 
 logger = logging.getLogger(__name__)
 
+
 def test_ec2_brute_force_playbook_e2e_as_target(
     temporary_ec2_instance,
     ssh_brute_force_finding,
@@ -51,7 +52,9 @@ def test_ec2_brute_force_playbook_e2e_as_target(
         "RemoteIpDetails"
     ]["IpAddressV4"] = malicious_ip
 
-    logger.info(f"Starting E2E test for Brute Force (TARGET) on instance {instance_id}...")
+    logger.info(
+        f"Starting E2E test for Brute Force (TARGET) on instance {instance_id}..."
+    )
     response = main.handler(test_event, {})
     assert response["statusCode"] == 200
     time.sleep(5)
@@ -115,7 +118,9 @@ def test_ec2_brute_force_playbook_e2e_as_source(
     test_event["detail"]["Service"]["ResourceRole"] = "SOURCE"
     test_event["detail"]["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 
-    logger.info(f"Starting E2E test for Brute Force (SOURCE) on instance {instance_id}...")
+    logger.info(
+        f"Starting E2E test for Brute Force (SOURCE) on instance {instance_id}..."
+    )
     response = main.handler(test_event, {})
     assert response["statusCode"] == 200
 

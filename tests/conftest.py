@@ -567,7 +567,10 @@ def iam_finding_factory():
     A pytest factory fixture to create sample GuardDuty IAM findings
     with different principal details for testing.
     """
-    def _create_finding(user_type: str, user_name: str, access_key_id: str = "ASIA_TEST_KEY"):
+
+    def _create_finding(
+        user_type: str, user_name: str, access_key_id: str = "ASIA_TEST_KEY"
+    ):
         return {
             "AccountId": "123456789012",
             "Id": "iam-finding-id",
@@ -582,15 +585,19 @@ def iam_finding_factory():
                 },
             },
         }
+
     return _create_finding
+
 
 @pytest.fixture
 def principal_details_factory():
     """A factory to create the input dictionary for the action."""
+
     def _factory(user_type: str, user_name: str):
         return {
             "user_type": user_type,
             "user_name": user_name,
-            "principal_arn": "arn:aws:iam::123456789012:user/test-user" # Placeholder
+            "principal_arn": "arn:aws:iam::123456789012:user/test-user",  # Placeholder
         }
+
     return _factory

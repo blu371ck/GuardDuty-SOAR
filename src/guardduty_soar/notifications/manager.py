@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union
+from typing import Any, Dict, List, Optional
 
 import boto3
 
@@ -7,7 +7,8 @@ from guardduty_soar.actions.notifications.base import BaseNotificationAction
 from guardduty_soar.actions.notifications.ses import SendSESNotificationAction
 from guardduty_soar.actions.notifications.sns import SendSNSNotificationAction
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import ActionResult, EnrichedEC2Finding, GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent
+from guardduty_soar.schemas import BaseResourceDetails, map_resource_to_model
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ class NotificationManager:
             self.actions.append(SendSNSNotificationAction(session, config))
             logger.info("SNS notifications enabled.")
 
-    def _dispatch(self, data: Union[GuardDutyEvent, EnrichedEC2Finding], **kwargs):
+    def _dispatch(self, **kwargs):
         """Helper to call execute on all registered actions."""
         for action in self.actions:
             try:
-                action.execute(data, **kwargs)
+                action.execute(**kwargs)
             except Exception as e:
                 logger.error(
-                    f"Failed to execute notification action {type(action).__name__}: {e}"
+                    f"Failed to exeute notification action {type(action).__name__}: {e}."
                 )
 
     def send_starting_notification(self, event: GuardDutyEvent, playbook_name: str):
@@ -42,13 +43,23 @@ class NotificationManager:
         logger.info(
             f"Dispatching 'starting' notifications for playbook {playbook_name}."
         )
-        self._dispatch(event, playbook_name=playbook_name, template_type="starting")
+
+        resource_model = map_resource_to_model(event.get("Resource", {}))
+        self._dispatch(
+            finding=event,
+            playbook_name=playbook_name,
+            template_type="starting",
+            resource=resource_model,
+            enriched_data=None,
+        )
 
     def send_complete_notification(
         self,
-        data: Union[GuardDutyEvent, EnrichedEC2Finding],
+        finding: GuardDutyEvent,
         playbook_name: str,
         action_results: List[ActionResult],
+        resource: BaseResourceDetails,
+        enriched_data: Optional[Dict[str, Any]],
     ):
         """Sends the final, detailed notification when a playbook has finished."""
         logger.info(
@@ -73,9 +84,11 @@ class NotificationManager:
         )
 
         self._dispatch(
-            data,
+            finding=finding,
             playbook_name=playbook_name,
             template_type="complete",
+            resource=resource,
+            enriched_data=enriched_data,
             final_status_emoji=final_status_emoji,
             actions_summary=actions_summary,
             final_status_message=final_status_message,

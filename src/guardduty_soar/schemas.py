@@ -1,9 +1,14 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+
+class IamPolicy(BaseModel):
+    PolicyName: str
+    PolicyArn: str
 
 
 class BaseResourceDetails(BaseModel):
@@ -13,7 +18,22 @@ class BaseResourceDetails(BaseModel):
 
     @property
     def template_name(self) -> str:
-        return f"partials/_baseresourcedetails.md.j2"
+        return f"partials/_{self.__class__.__name__.lower()}.md.j2"
+
+
+class IamPrincipalInfo(BaseModel):
+    """Base model for IAM user or role details."""
+
+    details: Dict[str, Any]
+    attached_policies: List[IamPolicy]
+    inline_policies: Dict[str, Any]
+
+    @property
+    def template_name(self) -> str:
+        # A property to dynamically select the right template
+        if "UserId" in self.details:  # Users have a UserId, Roles have a RoleId
+            return "partials/_iamuserdetails.md.j2"
+        return "partials/_iamroledetails.md.j2"
 
 
 class EC2InstanceDetails(BaseResourceDetails):
@@ -33,53 +53,77 @@ class EC2InstanceDetails(BaseResourceDetails):
         return f"partials/_ec2instancedetails.md.j2"
 
 
+class AccessKeyDetails(BaseResourceDetails):
+    resource_type: str = Field(..., alias="ResourceType")
+    access_key_id: Optional[str] = Field(None, alias="AccessKeyId")
+    principal_id: Optional[str] = Field(None, alias="PrincipalId")
+    user_name: Optional[str] = Field(None, alias="UserName")
+
+
+class S3BucketDetails(BaseResourceDetails):
+    resource_type: str = Field(..., alias="ResourceType")
+    bucket_name: Optional[str] = Field(None, alias="Name")
+    bucket_arn: Optional[str] = Field(None, alias="Arn")
+
+
+class EKSClusterDetails(BaseResourceDetails):
+    resource_type: str = Field(..., alias="ResourceType")
+    cluster_name: Optional[str] = Field(None, alias="Name")
+    cluster_arn: Optional[str] = Field(None, alias="Arn")
+
+
+class RDSInstanceDetails(BaseResourceDetails):
+    resource_type: str = Field(..., alias="ResourceType")
+    db_instance_identifier: Optional[str] = Field(None, alias="DbInstanceIdentifier")
+    db_cluster_identifier: Optional[str] = Field(None, alias="DbClusterIdentifier")
+    engine: Optional[str] = Field(None, alias="Engine")
+
+
+class LambdaDetails(BaseResourceDetails):
+    resource_type: str = Field(..., alias="ResourceType")
+    function_name: Optional[str] = Field(None, alias="FunctionName")
+    function_arn: Optional[str] = Field(None, alias="FunctionArn")
+
+
 def map_resource_to_model(
     resource_data: dict, instance_metadata: Optional[dict] = None
 ) -> BaseResourceDetails:
     """
-    Inspects the GuardDuty finding's resource data and returns the
-    appropriate Pydantic model.
+    Inspects the GuardDuty finding and returns the appropriate Pydantic model.
     """
     resource_type = resource_data.get("ResourceType")
 
-    # For now, since we are only working with EC2 instances, we define
-    # proper resources this way. This code may get extremely long by
-    # the time we are finished, so it may need refactoring. TODO
-    if resource_type == "Instance":
-        try:
+    try:
+        if resource_type == "Instance":
             details = resource_data.get("InstanceDetails", {})
-
             if instance_metadata:
                 details.update(instance_metadata)
+            return EC2InstanceDetails(**details, ResourceType=resource_type)
 
-            details["ResourceType"] = resource_type
+        elif resource_type == "AccessKey":
+            details = resource_data.get("AccessKeyDetails", {})
+            return AccessKeyDetails(**details, ResourceType=resource_type)
 
-            public_ip = None
-            if "NetworkInterfaces" in details and details["NetworkInterfaces"]:
-                net_interface = details["NetworkInterfaces"][0]
-                # Check the top level of the interface first
-                public_ip = net_interface.get("PublicIpAddress")
-                # If not found, check inside the 'Association' nested dictionary
-                if not public_ip and "Association" in net_interface:
-                    public_ip = net_interface["Association"].get("PublicIp")
+        elif resource_type == "S3Bucket":
+            # S3 details are a list, so we take the first one
+            details = resource_data.get("S3BucketDetails", [{}])[0]
+            return S3BucketDetails(**details, ResourceType=resource_type)
 
-            iam_profile_arn = None
-            if instance_metadata and "IamInstanceProfile" in instance_metadata:
-                iam_profile_arn = instance_metadata["IamInstanceProfile"].get("Arn")
+        elif resource_type == "EKSCluster":
+            details = resource_data.get("EksClusterDetails", {})
+            return EKSClusterDetails(**details, ResourceType=resource_type)
 
-            return EC2InstanceDetails(
-                **details, public_ip=public_ip, iam_profile_arn=iam_profile_arn
-            )
-        except Exception as e:
-            logger.error(f"Failed to map EC2 instance details: {e}. Falling back.")
-            return BaseResourceDetails(
-                ResourceType=(
-                    resource_type if isinstance(resource_type, str) else "Unknown"
-                )
-            )
+        elif resource_type == "DBInstance":
+            details = resource_data.get("RdsDbInstanceDetails", {})
+            return RDSInstanceDetails(**details, ResourceType=resource_type)
 
-    logger.warning(
-        f"No specific model mapping for resource type '{resource_type}'. Using base model."
-    )
-    final_resource_type = resource_type if isinstance(resource_type, str) else "Unknown"
-    return BaseResourceDetails(ResourceType=final_resource_type)
+        elif resource_type == "Lambda":
+            details = resource_data.get("LambdaDetails", {})
+            return LambdaDetails(**details, ResourceType=resource_type)
+
+    except Exception as e:
+        logger.error(
+            f"Failed to map resource type: '{resource_type}': {e}. Falling back."
+        )
+
+    return BaseResourceDetails(ResourceType=resource_type or "Unknown")
