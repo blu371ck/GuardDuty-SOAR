@@ -601,3 +601,97 @@ def principal_details_factory():
         }
 
     return _factory
+
+
+@pytest.fixture(scope="function")
+def temporary_iam_user(aws_region):
+    """Creates a temporary IAM user with policies for integration testing."""
+    iam_client = boto3.client("iam", region_name=aws_region)
+    user_name = f"gd-soar-test-user-{int(time.time())}"
+    policy_name = f"gd-soar-test-policy-{int(time.time())}"
+    inline_policy_name = "gd-soar-test-inline-policy"
+    resources = {}
+
+    try:
+        logger.info(f"Setting up temporary IAM user {user_name}...")
+        iam_client.create_user(UserName=user_name)
+
+        policy_res = iam_client.create_policy(
+            PolicyName=policy_name,
+            PolicyDocument=json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "s3:ListAllMyBuckets",
+                            "Resource": "*",
+                        }
+                    ],
+                }
+            ),
+        )
+        policy_arn = policy_res["Policy"]["Arn"]
+        resources = {"user_name": user_name, "policy_arn": policy_arn}
+
+        iam_client.attach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+        iam_client.put_user_policy(
+            UserName=user_name,
+            PolicyName=inline_policy_name,
+            PolicyDocument=json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "ec2:DescribeInstances",
+                            "Resource": "*",
+                        }
+                    ],
+                }
+            ),
+        )
+        yield resources
+
+    finally:
+        logger.info(f"Tearing down temporary IAM user {user_name}...")
+        if "user_name" in resources:
+            iam_client.delete_user_policy(
+                UserName=user_name, PolicyName=inline_policy_name
+            )
+            iam_client.detach_user_policy(
+                UserName=user_name, PolicyArn=resources["policy_arn"]
+            )
+            iam_client.delete_policy(PolicyArn=resources["policy_arn"])
+            iam_client.delete_user(UserName=user_name)
+
+
+@pytest.fixture(scope="function")
+def temporary_iam_role(aws_region):
+    """Creates a temporary IAM role with policies for integration testing."""
+    iam_client = boto3.client("iam", region_name=aws_region)
+    role_name = f"gd-soar-test-role-{int(time.time())}"
+    resources = {}
+
+    try:
+        logger.info(f"Setting up temporary IAM role {role_name}...")
+        assume_role_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "ec2.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+        iam_client.create_role(
+            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
+        )
+        resources = {"role_name": role_name}
+        yield resources
+
+    finally:
+        logger.info(f"Tearing down temporary IAM role {role_name}...")
+        if "role_name" in resources:
+            iam_client.delete_role(RoleName=role_name)
