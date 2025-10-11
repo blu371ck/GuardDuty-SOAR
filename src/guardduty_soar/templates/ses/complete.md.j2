@@ -1,13 +1,13 @@
-Subject: {{ completion_details.final_status_emoji }} SOAR Playbook Complete: {{ finding.Type }}
+Subject: {{ final_status_emoji }} SOAR Playbook Complete: {{ finding.Type }} 
 
-## {{ completion_details.final_status_emoji }} {{ completion_details.final_status_message }}
+## {{ final_status_emoji }} {{ final_status_message }} 
 
-The **{{ playbook_name }}** playbook has finished execution.
+The **{{ playbook_name }}** playbook has finished execution. 
 
 ### Actions Summary
-{{ completion_details.actions_summary }}
+{{ actions_summary }} 
 
 ---
 
 ### Affected Resource Details
-{% include resource.template_name %}
+{% include resource.template_name %} 

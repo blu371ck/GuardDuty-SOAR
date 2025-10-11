@@ -1,12 +1,13 @@
 {
   "event_type": "playbook_completed",
   "playbook_name": "{{ playbook_name }}",
-  "status_emoji": "{{ completion_details.final_status_emoji }}",
-  "status_message": "{{ completion_details.final_status_message }}",
-  "actions_summary": "{{ completion_details.actions_summary | replace('\n', '; ') }}",
+  "status_emoji": "{{ final_status_emoji }}",
+  "status_message": "{{ final_status_message }}",
+  "actions_summary": "{{ actions_summary | replace('\n', '; ') }}",
   "finding": {
     "id": "{{ finding.Id }}",
     "type": "{{ finding.Type }}"
   },
-  "resource": {{ resource.model_dump_json() | safe }}
+  "resource": {{ resource.model_dump_json() | safe }},
+  "enriched_data": {{ enriched_data_json | safe }}
 }

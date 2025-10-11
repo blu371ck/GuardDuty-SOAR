@@ -68,9 +68,32 @@ class GetIamPrincipalDetailsAction(BaseAction):
     def _get_role_details(self, role_name: str) -> Dict[str, Any]:
         """Helper method to gather details for an IAM role."""
         role_info = self.iam_client.get_role(RoleName=role_name)["Role"]
-        attached_policies = self.iam_client.list_attached_role_policies(
+        attached_policies_metas = self.iam_client.list_attached_role_policies(
             RoleName=role_name
         ).get("AttachedPolicies", [])
+
+        # Add this logic to fetch full policy documents for roles
+        attached_policies = []
+        for policy_meta in attached_policies_metas:
+            policy_arn = policy_meta["PolicyArn"]
+            try:
+                policy = self.iam_client.get_policy(PolicyArn=policy_arn)["Policy"]
+                version_id = policy["DefaultVersionId"]
+                policy_doc = self.iam_client.get_policy_version(
+                    PolicyArn=policy_arn, VersionId=version_id
+                )["PolicyVersion"]["Document"]
+                attached_policies.append(
+                    {
+                        "PolicyName": policy["PolicyName"],
+                        "PolicyArn": policy_arn,
+                        "PolicyDocument": policy_doc,
+                    }
+                )
+            except ClientError as e:
+                logger.warning(
+                    f"Could not retrieve document for attached policy {policy_arn}: {e}."
+                )
+
         inline_policy_names = self.iam_client.list_role_policies(
             RoleName=role_name
         ).get("PolicyNames", [])

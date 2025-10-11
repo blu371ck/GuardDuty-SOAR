@@ -1,5 +1,7 @@
+import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 import boto3
@@ -48,21 +50,33 @@ class BaseNotificationAction:
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        This is a simple function that packages up pre-processed
-        data for the Jinja2 templating engine.
+        Builds a flat dictionary of context data for the Jinja2 templating engine.
         """
-        # If enriched data for an IAM principal exists, wrap it in our Pydantic model
-        iam_principal_info = None
+        final_enriched_data = enriched_data
+
+        def json_serial(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            raise TypeError(f"Type {type(obj)} not serializable")
+
+        # If the enriched data represents an IAM principal, convert the Pydantic
+        # model to a dictionary so it can be json-serialized.
         if enriched_data and ("attached_policies" in enriched_data):
             iam_principal_info = IamPrincipalInfo(**enriched_data)
+            final_enriched_data = iam_principal_info.model_dump()
 
-        return {
+        context = {
             "finding": finding,
-            "resource": resource,  # The basic Pydantic model for the resource
-            "enriched_data": iam_principal_info
-            or enriched_data,  # The rich enrichment data
-            "completion_details": kwargs,
+            "resource": resource,
+            "enriched_data": final_enriched_data,
+            "enriched_data_json": json.dumps(
+                final_enriched_data or {}, default=json_serial, ensure_ascii=False
+            ),
         }
+
+        context.update(**kwargs)
+
+        return context
 
     def execute(self, **kwargs) -> ActionResponse:
         raise NotImplementedError

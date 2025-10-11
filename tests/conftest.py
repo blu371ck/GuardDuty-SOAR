@@ -575,6 +575,7 @@ def iam_finding_factory():
             "AccountId": "123456789012",
             "Id": "iam-finding-id",
             "Type": "CredentialAccess:IAMUser/AnomalousBehavior",
+            "Severity": 5.0,
             "Resource": {
                 "ResourceType": "AccessKey",
                 "AccessKeyDetails": {
