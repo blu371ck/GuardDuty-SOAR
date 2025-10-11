@@ -27,7 +27,7 @@ class IsolateInstanceAction(BaseAction):
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
-        quarantine_sg_id = self.config.quarantine_sg_id
+        quarantine_sg_id = self.config.quarantine_security_group_id
 
         logger.warning(
             f"ACTION: Isolating instance: {instance_id} with security group: {quarantine_sg_id}."

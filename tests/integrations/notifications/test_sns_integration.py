@@ -11,7 +11,7 @@ pytestmark = pytest.mark.integration
 logger = logging.getLogger(__name__)
 
 
-def test_sns_action_integration(enriched_ec2_finding, real_app_config, aws_region):
+def test_sns_action_integration(enriched_ec2_finding, real_app_config):
     """
     Tests the SendSNSNotificationAction against the REAL AWS SNS service
     using an enriched finding.
@@ -21,7 +21,7 @@ def test_sns_action_integration(enriched_ec2_finding, real_app_config, aws_regio
             "Skipping SNS test: 'allow_sns' is not True or 'sns_topic_arn' is not configured."
         )
 
-    session = boto3.Session(region_name=aws_region)
+    session = boto3.Session()
     action = SendSNSNotificationAction(session, real_app_config)
 
     finding = enriched_ec2_finding["guardduty_finding"]

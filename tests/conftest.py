@@ -156,19 +156,13 @@ def real_app_config() -> AppConfig:
     return get_config()
 
 
-@pytest.fixture(scope="session")
-def aws_region(real_app_config):
-    """Provides the AWS region for the test session."""
-    return real_app_config.aws_region
-
-
 @pytest.fixture(scope="function")
-def temporary_vpc(aws_region):
+def temporary_vpc():
     """
     Creates a temporary, isolated VPC and Subnet for integration tests.
     This is the base network fixture.
     """
-    ec2_client = boto3.client("ec2", region_name=aws_region)
+    ec2_client = boto3.client("ec2")
     resources = {}
     try:
         logger.info("Setting up temporary VPC and Subnet...")
@@ -191,13 +185,13 @@ def temporary_vpc(aws_region):
 
 
 @pytest.fixture(scope="function")
-def temporary_ec2_instance(aws_region, temporary_vpc):
+def temporary_ec2_instance(temporary_vpc):
     """
     Creates a temporary EC2 instance within the temporary_vpc.
     This is the base fixture for any test needing a live instance.
     """
-    ec2_client = boto3.client("ec2", region_name=aws_region)
-    ssm_client = boto3.client("ssm", region_name=aws_region)
+    ec2_client = boto3.client("ec2")
+    ssm_client = boto3.client("ssm")
     resources = {**temporary_vpc}  # Inherit VPC and Subnet IDs
 
     try:
@@ -284,14 +278,16 @@ def temporary_ec2_instance(aws_region, temporary_vpc):
 
 
 @pytest.fixture(scope="function")
-def e2e_notification_channel(real_app_config, aws_region):
+def e2e_notification_channel(
+    real_app_config,
+):
     """
     Creates a temporary SQS queue subscribed to the SNS topic for verifying
     notifications in an E2E test. Cleans up all resources afterward.
     """
     session = boto3.Session()
-    sqs_client = session.client("sqs", region_name=aws_region)
-    sns_client = session.client("sns", region_name=aws_region)
+    sqs_client = session.client("sqs")
+    sns_client = session.client("sns")
 
     resources = {}
     try:
@@ -605,9 +601,9 @@ def principal_details_factory():
 
 
 @pytest.fixture(scope="function")
-def temporary_iam_user(aws_region):
+def temporary_iam_user():
     """Creates a temporary IAM user with policies for integration testing."""
-    iam_client = boto3.client("iam", region_name=aws_region)
+    iam_client = boto3.client("iam")
     user_name = f"gd-soar-test-user-{int(time.time())}"
     policy_name = f"gd-soar-test-policy-{int(time.time())}"
     inline_policy_name = "gd-soar-test-inline-policy"
@@ -671,9 +667,9 @@ def temporary_iam_user(aws_region):
 
 
 @pytest.fixture(scope="function")
-def temporary_iam_role(aws_region):
+def temporary_iam_role():
     """Creates a temporary IAM role with policies for integration testing."""
-    iam_client = boto3.client("iam", region_name=aws_region)
+    iam_client = boto3.client("iam")
     role_name = f"gd-soar-test-role-{int(time.time())}"
     resources = {}
 
@@ -702,9 +698,9 @@ def temporary_iam_role(aws_region):
 
 
 @pytest.fixture(scope="function")
-def temporary_iam_user_with_risky_policy(aws_region):
+def temporary_iam_user_with_risky_policy():
     """Creates a temporary IAM user with a risky inline policy."""
-    iam_client = boto3.client("iam", region_name=aws_region)
+    iam_client = boto3.client("iam")
     user_name = f"gd-soar-risky-user-{int(time.time())}"
     inline_policy_name = "gd-soar-risky-inline-policy"
     resources = {}

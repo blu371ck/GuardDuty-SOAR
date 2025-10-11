@@ -19,7 +19,7 @@ def test_isolate_instance_action_success(guardduty_finding_detail, mock_app_conf
     quarantine_sg = "sg-quarantine-12345"
 
     # Set the quarantine_sg_id on the mock config object for the test
-    mock_app_config.quarantine_sg_id = quarantine_sg
+    mock_app_config.quarantine_security_group_id = quarantine_sg
 
     expected_params = {"InstanceId": instance_id, "Groups": [quarantine_sg]}
     response = {"ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -49,7 +49,7 @@ def test_isolate_instance_action_failure(guardduty_finding_detail, mock_app_conf
 
     instance_id = guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"]
     quarantine_sg = "sg-quarantine-12345"
-    mock_app_config.quarantine_sg_id = quarantine_sg
+    mock_app_config.quarantine_security_group_id = quarantine_sg
 
     # Tell the stubber to raise a ClientError when the method is called
     stubber.add_client_error(

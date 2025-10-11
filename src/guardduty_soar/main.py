@@ -1,4 +1,5 @@
 import importlib
+import json
 import logging
 import os
 
@@ -109,6 +110,13 @@ def handler(event: LambdaEvent, context: LambdaContext) -> Response:
         # Get the singleton config instance we then inject it into
         # the engine.
         config = get_config()
+
+        # Validate finding is not an ignored finding
+        if event["detail"]["Type"] in config.ignored_findings:
+            return {
+                "statusCode": 200,
+                "message": f"Finding Type: {event["detail"]["Type"]} explicitly ignored in configuration.",
+            }
 
         # Instantiate the Engine class to parse the event JSON data.
         engine = Engine(event["detail"], config)

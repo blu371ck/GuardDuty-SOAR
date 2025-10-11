@@ -13,9 +13,8 @@ class AppConfig:
 
     log_level: str
     boto_log_level: str
-    aws_region: Optional[str]
-    ec2_ignored_findings: List[str]
-    quarantine_sg_id: Optional[str]
+    ignored_findings: List[str]
+    quarantine_security_group_id: Optional[str]
     iam_deny_all_policy_arn: Optional[str]
     snapshot_description_prefix: str
     allow_terminate: bool
@@ -71,7 +70,7 @@ def get_config() -> AppConfig:
         )
         return [line.strip() for line in raw_value.split("\n") if line.strip()]
 
-    snapshot_prefix = os.environ.get("GD_SNAPSHOT_DESC_PREFIX")
+    snapshot_prefix = os.environ.get("GD_SNAPSHOT_DESCRIPTION_PREFIX")
     if not snapshot_prefix:
         snapshot_prefix = config.get(
             "EC2", "snapshot_description_prefix", fallback="GD-SOAR-Snapshot-"
@@ -79,19 +78,15 @@ def get_config() -> AppConfig:
 
     # Create the AppConfig object by reading each value safely
     return AppConfig(
-        ec2_ignored_findings=get_list("EC2", "ignored_findings"),
+        ignored_findings=get_list("General", "ignored_findings"),
         snapshot_description_prefix=snapshot_prefix,
         boto_log_level=os.environ.get("GD_BOTO_LOG_LEVEL")
         or config.get("General", "boto_log_level", fallback="WARNING").upper(),
         log_level=os.environ.get("GD_LOG_LEVEL")
         or config.get("General", "log_level", fallback="INFO").upper(),
-        aws_region=os.environ.get("GD_AWS_REGION")
-        or config.get(
-            "General", "aws_region", fallback=boto3.Session().region_name or "us-east-1"
-        ),
         cloudtrail_history_max_results=validated_ct_results,
-        quarantine_sg_id=os.environ.get("GD_QUARANTINE_SG_ID")
-        or config.get("EC2", "quarantine_sg_id", fallback=None),
+        quarantine_security_group_id=os.environ.get("GD_QUARANTINE_SECURITY_GROUP_ID")
+        or config.get("EC2", "quarantine_security_group_id", fallback=None),
         iam_deny_all_policy_arn=os.environ.get("GD_IAM_DENY_ALL_POLICY_ARN")
         or config.get("EC2", "iam_deny_all_policy_arn", fallback=None),
         allow_terminate=os.environ.get("GD_ALLOW_TERMINATE") is not None

@@ -53,7 +53,9 @@ def test_isolate_instance_action_integration(
     # Create a mutable copy of the config and set the quarantine ID for this test
     from dataclasses import replace
 
-    test_config = replace(real_app_config, quarantine_sg_id=quarantine_sg_id)
+    test_config = replace(
+        real_app_config, quarantine_security_group_id=quarantine_sg_id
+    )
 
     instance_id = temporary_ec2_instance["instance_id"]
     guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
@@ -73,10 +75,10 @@ def test_isolate_instance_action_integration(
 
 
 def test_create_snapshot_action_integration(
-    temporary_ec2_instance, guardduty_finding_detail, real_app_config, aws_region
+    temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
     """Tests the CreateSnapshotAction against a temporary EC2 instance."""
-    ec2_client = boto3.client("ec2", region_name=aws_region)
+    ec2_client = boto3.client("ec2")
     instance_id = temporary_ec2_instance["instance_id"]
     guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
 

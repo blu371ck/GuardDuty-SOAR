@@ -34,7 +34,9 @@ def test_ec2_instance_compromise_playbook_e2e(
     temp_quarantine_sg_id = compromised_instance_e2e_setup["quarantine_sg_id"]
 
     test_config = replace(
-        real_app_config, quarantine_sg_id=temp_quarantine_sg_id, allow_terminate=True
+        real_app_config,
+        quarantine_security_group_id=temp_quarantine_sg_id,
+        allow_terminate=True,
     )
     mocker.patch("guardduty_soar.main.get_config", return_value=test_config)
 

@@ -6,6 +6,8 @@ import pytest
 from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.main import handler, setup_logging
 
+logger = logging.getLogger(__name__)
+
 
 def test_setup_logging(mock_app_config):
     """

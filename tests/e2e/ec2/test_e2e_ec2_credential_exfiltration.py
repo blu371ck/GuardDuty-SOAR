@@ -37,7 +37,9 @@ def test_ec2_credential_exfiltration_playbook_e2e(
     temp_quarantine_sg_id = test_resources["quarantine_sg_id"]
 
     # Create a modified config for this test run and patch get_config()
-    test_config = replace(real_app_config, quarantine_sg_id=temp_quarantine_sg_id)
+    test_config = replace(
+        real_app_config, quarantine_security_group_id=temp_quarantine_sg_id
+    )
     mocker.patch("guardduty_soar.main.get_config", return_value=test_config)
 
     # Create the specific test event for this playbook
