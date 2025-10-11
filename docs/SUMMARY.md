@@ -9,15 +9,7 @@
   * [🧪 Preparing GuardDuty-SOAR for Testing](testing-and-development/preparing-guardduty-soar-for-testing.md)
   * [🎛️ Testing Configurations](testing-and-development/testing-configurations.md)
   * [Pull Request Checklist](testing-and-development/pull-request-checklist.md)
-
-## Architecture
-
-* [Overview](architecture/overview.md)
-* [The Engine](architecture/the-engine.md)
-* [Playbooks](architecture/playbooks.md)
-* [Actions](architecture/actions.md)
-
-## Testing and Development
-
-* [Testing Setup](testing-and-development-1/testing-setup.md)
-* [Resources Needed for testing.](testing-and-development-1/resources-needed-for-testing..md)
+* [🏛️ Concepts](concepts/README.md)
+  * [⚙️ Configurations](concepts/configurations.md)
+  * [📑 Playbooks](concepts/playbooks.md)
+  * [🔨 Actions](concepts/actions.md)
