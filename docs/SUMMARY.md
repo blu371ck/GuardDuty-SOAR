@@ -8,6 +8,7 @@
 * [Testing and Development](testing-and-development/README.md)
   * [🧪 Preparing GuardDuty-SOAR for Testing](testing-and-development/preparing-guardduty-soar-for-testing.md)
   * [🎛️ Testing Configurations](testing-and-development/testing-configurations.md)
+  * [Pull Request Checklist](testing-and-development/pull-request-checklist.md)
 
 ## Architecture
 
