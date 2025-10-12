@@ -759,3 +759,18 @@ def mock_event():
         "Type": "Test:IAMUser/TestFinding",
         "Severity": 5.0,
     }
+
+
+@pytest.fixture
+def mock_app_config_with_deny_policy(mock_app_config):
+    mock_app_config.iam_deny_all_policy_arn = "arn:aws:iam::123456789012:policy/DenyAll"
+    return mock_app_config
+
+
+@pytest.fixture
+def finding_with_profile(guardduty_finding_detail):
+    finding = guardduty_finding_detail.copy()
+    finding["Resource"]["InstanceDetails"]["IamInstanceProfile"] = {
+        "Arn": "arn:aws:iam::123456789012:instance-profile/test-instance-profile"
+    }
+    return finding

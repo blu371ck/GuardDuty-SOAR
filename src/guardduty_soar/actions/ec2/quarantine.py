@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 class QuarantineInstanceProfileAction(BaseAction):
     """
     An action to quarantine an EC2 instance's IAM role by attaching a
-    'deny-all' policy to it. This action fetches live instance data to ensure accuracy.
+    'deny-all' policy to it. This action correctly looks up the role
+    associated with the instance profile.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
@@ -23,10 +24,9 @@ class QuarantineInstanceProfileAction(BaseAction):
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
-        # Initialize instance_profile_arn to prevent unbound variable error.
-        instance_profile_arn = ""
 
         try:
+            # Step 1: Get live instance metadata
             response = self.ec2_client.describe_instances(InstanceIds=[instance_id])
 
             if not response.get("Reservations") or not response["Reservations"][0].get(
@@ -44,14 +44,30 @@ class QuarantineInstanceProfileAction(BaseAction):
                 logger.info(details)
                 return {"status": "success", "details": details}
 
+            # Step 2: Get the Instance Profile Name from its ARN
             instance_profile_arn = iam_profile["Arn"]
-            role_name = instance_profile_arn.split("/")[-1]
+            instance_profile_name = instance_profile_arn.split("/")[-1]
+
+            # Step 3: Call GetInstanceProfile to find the associated Role Name
+            profile_details = self.iam_client.get_instance_profile(
+                InstanceProfileName=instance_profile_name
+            )
+
+            roles = profile_details.get("InstanceProfile", {}).get("Roles")
+            if not roles:
+                details = (
+                    f"Instance profile {instance_profile_name} has no associated roles."
+                )
+                logger.error(details)
+                return {"status": "error", "details": details}
+
+            role_name = roles[0]["RoleName"]  # This is the correct role name
             deny_policy_arn = self.config.iam_deny_all_policy_arn
 
+            # Step 4: Attach the deny policy to the correct role
             logger.warning(
                 f"ACTION: Attaching deny-all policy ({deny_policy_arn}) to IAM role ({role_name})."
             )
-
             self.iam_client.attach_role_policy(
                 RoleName=role_name, PolicyArn=deny_policy_arn
             )
@@ -61,17 +77,12 @@ class QuarantineInstanceProfileAction(BaseAction):
             return {"status": "success", "details": details}
 
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            # Check if error_code exists before deeper checks.
-            if error_code and "NotFound" in error_code:
-                details = f"Instance {instance_id} not found. Skipping role quarantine."
+            # Handle cases where the instance might have been terminated mid-process
+            if "NotFound" in e.response.get("Error", {}).get("Code", ""):
+                details = f"Instance {instance_id} or its profile not found. Skipping role quarantine."
                 logger.warning(details)
                 return {"status": "success", "details": details}
 
-            details = f"Failed to attach deny policy to role. Error: {e}."
-            logger.error(details)
-            return {"status": "error", "details": details}
-        except IndexError:
-            details = f"Could not parse role name from instance profile ARN: {instance_profile_arn}"
+            details = f"Failed to attach deny policy. Error: {e}."
             logger.error(details)
             return {"status": "error", "details": details}
