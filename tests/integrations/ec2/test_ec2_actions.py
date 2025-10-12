@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 
 import boto3
@@ -47,31 +48,78 @@ def test_tag_instance_action_integration(
 def test_isolate_instance_action_integration(
     temporary_ec2_instance, guardduty_finding_detail, real_app_config
 ):
-    """Tests the IsolateInstanceAction."""
-    quarantine_sg_id = temporary_ec2_instance["quarantine_sg_id"]
-
-    # Create a mutable copy of the config and set the quarantine ID for this test
-    from dataclasses import replace
-
-    test_config = replace(
-        real_app_config, quarantine_security_group_id=quarantine_sg_id
-    )
-
-    instance_id = temporary_ec2_instance["instance_id"]
-    guardduty_finding_detail["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
-
+    """
+    Tests the new dynamic IsolateInstanceAction. It verifies that a new,
+    deny-all security group is created in the instance's VPC and applied,
+    and cleans up the created security group.
+    """
     session = boto3.Session()
-    action = IsolateInstanceAction(session, test_config)  # Use the modified config
-    result = action.execute(guardduty_finding_detail)
-
-    assert result["status"] == "success"
-
     ec2_client = session.client("ec2")
-    instance = ec2_client.describe_instances(InstanceIds=[instance_id])["Reservations"][
-        0
-    ]["Instances"][0]
-    attached_sgs = [sg["GroupId"] for sg in instance["SecurityGroups"]]
-    assert attached_sgs == [quarantine_sg_id]
+    new_sg_id = None
+    instance_id = temporary_ec2_instance["instance_id"]  # Define early for cleanup
+
+    try:
+        vpc_id = temporary_ec2_instance["vpc_id"]
+        finding = guardduty_finding_detail
+        finding["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+        if "NetworkInterfaces" not in finding["Resource"]["InstanceDetails"]:
+            finding["Resource"]["InstanceDetails"]["NetworkInterfaces"] = [{}]
+        finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0]["VpcId"] = vpc_id
+
+        action = IsolateInstanceAction(session, real_app_config)
+        result = action.execute(finding)
+
+        assert result["status"] == "success"
+
+        # More robustly get the new SG ID by describing the instance's current state
+        instance = ec2_client.describe_instances(InstanceIds=[instance_id])[
+            "Reservations"
+        ][0]["Instances"][0]
+        attached_sgs = [sg["GroupId"] for sg in instance["SecurityGroups"]]
+
+        assert (
+            len(attached_sgs) == 1
+        ), "Instance should be in exactly one quarantine SG."
+        new_sg_id = attached_sgs[
+            0
+        ]  # Capture the new SG ID for verification and cleanup
+
+        # Verify the new SG has no inbound or outbound rules
+        new_sg = ec2_client.describe_security_groups(GroupIds=[new_sg_id])[
+            "SecurityGroups"
+        ][0]
+        assert not new_sg.get("IpPermissions"), "New SG should have no inbound rules."
+        assert not new_sg.get(
+            "IpPermissionsEgress"
+        ), "New SG should have no outbound rules."
+        logger.info(
+            f"Successfully verified instance {instance_id} is isolated in {new_sg_id}."
+        )
+
+    finally:
+        # Must happen in the correct order to remove dependencies.
+        if new_sg_id:
+            try:
+                logger.info("Cleaning up from isolation test...")
+                # 1. Revert the instance to its original security group to remove the dependency.
+                original_sg_id = temporary_ec2_instance["default_sg_id"]
+                ec2_client.modify_instance_attribute(
+                    InstanceId=instance_id, Groups=[original_sg_id]
+                )
+                logger.info(
+                    f"Reverted instance {instance_id} to original SG {original_sg_id}."
+                )
+
+                # A delay is often needed for the SG dependency to be released.
+                time.sleep(10)
+
+                # 2. Now that the SG is not in use, it can be deleted.
+                logger.info(f"Deleting dynamically created security group: {new_sg_id}")
+                ec2_client.delete_security_group(GroupId=new_sg_id)
+            except ClientError as e:
+                logger.warning(
+                    f"Could not clean up resources from test. Manual cleanup may be required. Error: {e}"
+                )
 
 
 def test_create_snapshot_action_integration(

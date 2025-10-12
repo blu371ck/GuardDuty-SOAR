@@ -1,10 +1,13 @@
 import copy
+import json
 import logging
+import re
 import time
 from dataclasses import replace
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 from guardduty_soar import main
 
@@ -31,7 +34,7 @@ def test_ec2_brute_force_playbook_e2e_as_target(
     subnet_id = temporary_ec2_instance["subnet_id"]
     vpc_id = temporary_ec2_instance["vpc_id"]
     queue_url = e2e_notification_channel["queue_url"]
-    malicious_ip = "198.51.100.111"  # Use a unique IP for this test
+    malicious_ip = "198.51.100.111"
 
     nacl = ec2_client.describe_network_acls(
         Filters=[
@@ -96,53 +99,90 @@ def test_ec2_brute_force_playbook_e2e_as_source(
     sqs_poller,
 ):
     """
-    Tests the 'SOURCE' path of the EC2BruteForcePlaybook.
-    Verifies the full compromise workflow is executed.
+    Tests the 'SOURCE' path, which triggers the full compromise workflow.
     """
     session = boto3.Session()
     ec2_client = session.client("ec2")
     iam_client = session.client("iam")
+    new_sg_id = None
+    instance_id = compromised_instance_e2e_setup[
+        "instance_id"
+    ]  # Define early for cleanup
 
-    instance_id = compromised_instance_e2e_setup["instance_id"]
-    role_name = compromised_instance_e2e_setup["role_name"]
-    queue_url = compromised_instance_e2e_setup["queue_url"]
-    temp_quarantine_sg_id = compromised_instance_e2e_setup["quarantine_sg_id"]
+    try:
+        role_name = compromised_instance_e2e_setup["role_name"]
+        queue_url = compromised_instance_e2e_setup["queue_url"]
+        vpc_id = compromised_instance_e2e_setup["vpc_id"]
 
-    test_config = replace(
-        real_app_config,
-        quarantine_security_group_id=temp_quarantine_sg_id,
-        allow_terminate=True,
-    )
-    mocker.patch("guardduty_soar.main.get_config", return_value=test_config)
+        test_config = replace(real_app_config, allow_terminate=True)
+        mocker.patch("guardduty_soar.main.get_config", return_value=test_config)
 
-    test_event = copy.deepcopy(valid_guardduty_event)
-    test_event["detail"] = copy.deepcopy(ssh_brute_force_finding)
-    test_event["detail"]["Service"]["ResourceRole"] = "SOURCE"
-    test_event["detail"]["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+        test_event = copy.deepcopy(valid_guardduty_event)
+        test_event["detail"] = copy.deepcopy(ssh_brute_force_finding)
+        test_event["detail"]["Service"]["ResourceRole"] = "SOURCE"
+        test_event["detail"]["Resource"]["InstanceDetails"]["InstanceId"] = instance_id
+        test_event["detail"]["Resource"]["InstanceDetails"]["NetworkInterfaces"][0][
+            "VpcId"
+        ] = vpc_id
 
-    logger.info(
-        f"Starting E2E test for Brute Force (SOURCE) on instance {instance_id}..."
-    )
-    response = main.handler(test_event, {})
-    assert response["statusCode"] == 200
+        logger.info(
+            f"Starting E2E test for Brute Force (SOURCE) on instance {instance_id}..."
+        )
+        response = main.handler(test_event, {})
+        assert response["statusCode"] == 200
 
-    logger.info("Verifying final state for SOURCE path...")
+        logger.info("Verifying final state for SOURCE path...")
+        time.sleep(5)
 
-    # Verify snapshot was created (artifact of compromise workflow)
-    snapshots = ec2_client.describe_snapshots(
-        Filters=[{"Name": "description", "Values": [f"*{instance_id}*"]}]
-    )["Snapshots"]
-    assert len(snapshots) > 0
-    logger.info("Snapshot was successfully created.")
+        # We need to find the SG ID before the instance is terminated.
+        # Describe all SGs in the VPC tagged by the playbook for this finding ID.
+        playbook_sgs = ec2_client.describe_security_groups(
+            Filters=[
+                {"Name": "vpc-id", "Values": [vpc_id]},
+                {
+                    "Name": "tag:GUARDDUTY-SOAR-ID",
+                    "Values": [test_event["detail"]["Id"]],
+                },
+            ]
+        )["SecurityGroups"]
+        assert (
+            len(playbook_sgs) == 1
+        ), "Could not find dynamically created quarantine SG."
+        new_sg_id = playbook_sgs[0]["GroupId"]
+        logger.info(f"Instance was isolated in new SG {new_sg_id}.")
 
-    # Verify IAM role was quarantined (artifact of compromise workflow)
-    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
-        "AttachedPolicies"
-    ]
-    attached_arns = [p["PolicyArn"] for p in attached_policies]
-    assert real_app_config.iam_deny_all_policy_arn in attached_arns
-    logger.info("IAM role was successfully quarantined.")
+        # Other assertions from the compromise workflow...
+        snapshots = ec2_client.describe_snapshots(
+            Filters=[{"Name": "description", "Values": [f"*{instance_id}*"]}]
+        )["Snapshots"]
+        assert len(snapshots) > 0
+        logger.info("Snapshot was successfully created.")
 
-    # Verify notifications
-    sqs_poller(queue_url=queue_url, expected_count=2)
-    logger.info("SNS notifications were successfully verified.")
+        attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)[
+            "AttachedPolicies"
+        ]
+        attached_arns = [p["PolicyArn"] for p in attached_policies]
+        assert real_app_config.iam_deny_all_policy_arn in attached_arns
+        logger.info("IAM role was successfully quarantined.")
+
+        # Verify notifications
+        sqs_poller(queue_url=queue_url, expected_count=2)
+        logger.info("SNS notifications were successfully verified.")
+
+    finally:
+        # Cleanup
+        if new_sg_id:
+            try:
+                logger.info("Cleaning up from Brute Force (SOURCE) test...")
+                # 1. Wait for the instance to be fully terminated.
+                waiter = ec2_client.get_waiter("instance_terminated")
+                waiter.wait(InstanceIds=[instance_id])
+                logger.info(f"Instance {instance_id} is confirmed terminated.")
+
+                # 2. Now that the instance is gone, the SG dependency is removed.
+                ec2_client.delete_security_group(GroupId=new_sg_id)
+                logger.info(f"Cleaned up dynamic SG {new_sg_id}.")
+            except ClientError as e:
+                logger.warning(
+                    f"Could not clean up SG {new_sg_id}. Manual cleanup may be required. Error: {e}"
+                )
