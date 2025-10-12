@@ -32,13 +32,12 @@ The following is a complete list of the available environment variables and thei
 
 ### \[EC2]
 
-| .env                              | gd.cfg                         |
-| --------------------------------- | ------------------------------ |
-| `GD_QUARANTINE_SECURITY_GROUP_ID` | `quarantine_security_group_id` |
-| `GD_IAM_DENY_ALL_POLICY_ARN`      | `iam_deny_all_policy_arn`      |
-| `GD_SNAPSHOT_DESCRIPTION_PREFIX`  | `snapshot_description_prefix`  |
-| `GD_ALLOW_TERMINATE`              | `allow_terminate`              |
-| `GD_ALLOW_REMOVE_PUBLIC_ACCESS`   | `allow_remove_public_access`   |
+| .env                             | gd.cfg                        |
+| -------------------------------- | ----------------------------- |
+| `GD_IAM_DENY_ALL_POLICY_ARN`     | `iam_deny_all_policy_arn`     |
+| `GD_SNAPSHOT_DESCRIPTION_PREFIX` | `snapshot_description_prefix` |
+| `GD_ALLOW_TERMINATE`             | `allow_terminate`             |
+| `GD_ALLOW_REMOVE_PUBLIC_ACCESS`  | `allow_remove_public_access`  |
 
 ### \[IAM]
 

@@ -51,18 +51,68 @@ This process isolates production dependencies and packages them with your source
     ```bash
     uv pip install -r requirements.txt --target build/dist/package
     ```
-3.  Copy Application Source Code: Copy the <mark style="color:$primary;">`guardduty_soar`</mark> application package from the <mark style="color:$primary;">`src`</mark> directory into the staging directory alongside the dependencies.
 
-    ```bash
-    cp -r src/guardduty_soar build/dist/package/
-    ```
-4.  Create the Deployment Package: Navigate into the staging directory and create a <mark style="color:$primary;">`.zip`</mark> file containing all its contents.
+{% hint style="warning" %}
+## Important Note on Build Environments
 
-    ```bash
-    cd build/dist/package
-    zip -r ../lambda_deployment_package.zip .
-    cd ../../../
+The build process for the AWS Lambda deployment package is architecture-dependent. This is because some project dependencies include compiled code that must match the CPU architecture of the Lambda runtime.
+
+AWS Lambda offers two architectures:
+
+* <mark style="color:$primary;">`x86_64`</mark> (for Intel/AMD processors)
+* <mark style="color:$primary;">`arm64`</mark> (for AWS Graviton/Apple Silicon processors)
+
+The architecture of your build environment must match the architecture you configure for your Lambda function.
+
+#### For Users on Intel-based Machines (Linux or macOS)
+
+You can build the deployment package natively. The resulting artifact will be for the <mark style="color:$primary;">`x86_64`</mark> architecture, so you must select <mark style="color:$primary;">`x86_64`</mark> when configuring your Lambda function.
+
+#### For Users on Apple Silicon Macs (M1/M2/M3)
+
+You have two options:
+
+1. Build Natively for ARM (**Recommended**): Build the package directly on your Mac. The artifact will be for the <mark style="color:$primary;">`arm64`</mark> architecture. You must select <mark style="color:$primary;">`arm64`</mark> in your Lambda function's runtime settings.
+2. Cross-Compile for <mark style="color:$primary;">`x86_64`</mark>: To deploy to the <mark style="color:$primary;">`x86_64`</mark> architecture, you must use the **Docker** method described below.
+
+#### For Windows Users
+
+You cannot build natively for **either** Lambda architecture. Your options are:
+
+* Use Windows Subsystem for Linux (WSL) to build for <mark style="color:$primary;">`x86_64`</mark>.
+* Use Docker (**recommended**) to build for either architecture.
+
+***
+
+#### Universal Solution: Building with Docker
+
+Using Docker is the most reliable way to build for a specific architecture, regardless of your local machine.
+
+*   To build for <mark style="color:$primary;">`x86_64`</mark> Lambda functions:
+
+    ```powershell
+    docker run --rm -v "${pwd}:/var/task" public.ecr.aws/lambda/python:3.13-x86_64 /bin/sh -c "uv pip install -r requirements.txt --target build/dist/package"
     ```
+*   To build for <mark style="color:$primary;">`arm64`</mark> Lambda functions:
+
+    ```powershell
+    docker run --rm -v "${pwd}:/var/task" public.ecr.aws/lambda/python:3.13-arm64 /bin/sh -c "uv pip install -r requirements.txt --target build/dist/package"
+    ```
+{% endhint %}
+
+3. Copy Application Source Code: Copy the <mark style="color:$primary;">`guardduty_soar`</mark> application package from the <mark style="color:$primary;">`src`</mark> directory into the staging directory alongside the dependencies.
+
+```bash
+cp -r src/guardduty_soar build/dist/package/
+```
+
+4. Create the Deployment Package: Navigate into the staging directory and create a <mark style="color:$primary;">`.zip`</mark> file containing all its contents.
+
+```bash
+cd build/dist/package
+zip -r ../lambda_deployment_package.zip .
+cd ../../../
+```
 
 The final artifact, <mark style="color:$primary;">`build/dist/lambda_deployment_package.zip`</mark>, is now ready for deployment.
 
