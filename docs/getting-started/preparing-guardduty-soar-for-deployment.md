@@ -1,6 +1,19 @@
 # 🚀 Preparing GuardDuty-SOAR for Deployment
 
-### &#x20;Preparing GuardDuty-SOAR for Deployment
+{% hint style="danger" %}
+## Before you deploy!
+
+Amazon GuardDuty is designed to report on a wide range of potential security risks. However, some of these findings may represent activity that is intentional or acceptable within your specific environment (e.g., an application that performs port scanning, or a web server with a publicly accessible port).
+
+To ensure GuardDuty-SOAR only acts on unintended threats, a two-step process is required for tuning:
+
+1. **Create Suppression Rules in GuardDuty**: First, you should create suppression rules directly within the AWS GuardDuty service. This tells GuardDuty to automatically archive future findings that match your specific criteria, preventing them from becoming active alerts.
+2. **Update the** <mark style="color:$primary;">ignored\_findings</mark> **Configuration**: Second, you must add the same finding types that you suppressed in GuardDuty to the <mark style="color:$primary;">ignored\_findings</mark> list in your <mark style="color:$primary;">gd.cfg</mark> or <mark style="color:$primary;">.env</mark> file. This ensures that GuardDuty-SOAR will not execute a playbook, even if a finding is triggered before a suppression rule takes effect.
+
+Both of these steps are essential for a properly tuned deployment that protects your organization from unintended threats without disrupting legitimate operations.
+{% endhint %}
+
+### Preparing GuardDuty-SOAR for Deployment
 
 This guide provides comprehensive instructions for deploying the GuardDuty-SOAR application as an AWS Lambda function for production use. For details on local development and testing procedures, please refer to the dedicated testing and development documentation.
 
