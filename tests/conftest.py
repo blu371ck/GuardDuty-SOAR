@@ -41,10 +41,10 @@ def port_probe_finding(guardduty_finding_detail):
                 "PortProbeDetails": [
                     {
                         "LocalPortDetails": {"Port": 22},
-                        "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
+                        "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"},
                     }
                 ]
-            }
+            },
         }
     }
     return finding

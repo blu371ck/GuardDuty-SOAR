@@ -28,41 +28,59 @@ class BlockMaliciousIpAction(BaseAction):
 
             # Step 1: Extract IP(s) to block based on the Action Type
             if action_type == "NETWORK_CONNECTION":
-                remote_ip = event["Service"]["Action"]["NetworkConnectionAction"]["RemoteIpDetails"]["IpAddressV4"]
+                remote_ip = event["Service"]["Action"]["NetworkConnectionAction"][
+                    "RemoteIpDetails"
+                ]["IpAddressV4"]
                 if remote_ip:
                     ips_to_block.append(remote_ip)
                 logger.info(f"Identified single IP to block: {remote_ip}")
-            
+
             elif action_type == "PORT_PROBE":
-                port_probe_details = event["Service"]["Action"]["PortProbeAction"].get("PortProbeDetails", [])
+                port_probe_details = event["Service"]["Action"]["PortProbeAction"].get(
+                    "PortProbeDetails", []
+                )
                 for probe in port_probe_details:
                     remote_ip = probe.get("RemoteIpDetails", {}).get("IpAddressV4")
                     if remote_ip and remote_ip not in ips_to_block:
                         ips_to_block.append(remote_ip)
-                logger.info(f"Identified {len(ips_to_block)} unique IP(s) from PortProbe details.")
-            
+                logger.info(
+                    f"Identified {len(ips_to_block)} unique IP(s) from PortProbe details."
+                )
+
             else:
-                details = f"Action type '{action_type}' is not supported for IP blocking."
+                details = (
+                    f"Action type '{action_type}' is not supported for IP blocking."
+                )
                 logger.warning(details)
                 return {"status": "skipped", "details": details}
 
             if not ips_to_block:
-                return {"status": "success", "details": "No IP addresses were identified to block."}
+                return {
+                    "status": "success",
+                    "details": "No IP addresses were identified to block.",
+                }
 
             # Step 2: Get the Network ACL for the instance's subnet
-            subnet_id = event["Resource"]["InstanceDetails"]["NetworkInterfaces"][0]["SubnetId"]
+            subnet_id = event["Resource"]["InstanceDetails"]["NetworkInterfaces"][0][
+                "SubnetId"
+            ]
             response = self.ec2_client.describe_network_acls(
                 Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}]
             )
             if not response.get("NetworkAcls"):
-                return {"status": "error", "details": f"No network ACL found for subnet {subnet_id}."}
+                return {
+                    "status": "error",
+                    "details": f"No network ACL found for subnet {subnet_id}.",
+                }
 
             nacl = response["NetworkAcls"][0]
             nacl_id = nacl["NetworkAclId"]
             logger.info(f"Found Network ACL: {nacl_id} for subnet {subnet_id}.")
 
             # Step 3: Determine the next available rule numbers
-            existing_rules = [e["RuleNumber"] for e in nacl["Entries"] if e["RuleNumber"] < 100]
+            existing_rules = [
+                e["RuleNumber"] for e in nacl["Entries"] if e["RuleNumber"] < 100
+            ]
             last_rule_num = max(existing_rules) if existing_rules else 0
 
             # Step 4: Loop through all identified IPs and create deny rules for each
@@ -71,18 +89,30 @@ class BlockMaliciousIpAction(BaseAction):
                 outbound_rule_num = last_rule_num + 2
                 ip_cidr = f"{ip}/32"
 
-                logger.warning(f"ACTION: Adding INBOUND deny rule to {nacl_id} for {ip_cidr} at rule number {inbound_rule_num}.")
+                logger.warning(
+                    f"ACTION: Adding INBOUND deny rule to {nacl_id} for {ip_cidr} at rule number {inbound_rule_num}."
+                )
                 self.ec2_client.create_network_acl_entry(
-                    NetworkAclId=nacl_id, RuleNumber=inbound_rule_num, Protocol="-1",
-                    RuleAction="deny", Egress=False, CidrBlock=ip_cidr,
+                    NetworkAclId=nacl_id,
+                    RuleNumber=inbound_rule_num,
+                    Protocol="-1",
+                    RuleAction="deny",
+                    Egress=False,
+                    CidrBlock=ip_cidr,
                 )
 
-                logger.warning(f"ACTION: Adding OUTBOUND deny rule to {nacl_id} for {ip_cidr} at rule number {outbound_rule_num}.")
-                self.ec2_client.create_network_acl_entry(
-                    NetworkAclId=nacl_id, RuleNumber=outbound_rule_num, Protocol="-1",
-                    RuleAction="deny", Egress=True, CidrBlock=ip_cidr,
+                logger.warning(
+                    f"ACTION: Adding OUTBOUND deny rule to {nacl_id} for {ip_cidr} at rule number {outbound_rule_num}."
                 )
-                
+                self.ec2_client.create_network_acl_entry(
+                    NetworkAclId=nacl_id,
+                    RuleNumber=outbound_rule_num,
+                    Protocol="-1",
+                    RuleAction="deny",
+                    Egress=True,
+                    CidrBlock=ip_cidr,
+                )
+
                 # Increment the rule number for the next IP in the loop
                 last_rule_num += 2
 

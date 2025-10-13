@@ -126,7 +126,8 @@ class IamForensicsPlaybook(IamBasePlaybook):
             logger.info("Successfully analyzed IAM principals permissions.")
             enriched_data["permission_analysis"] = result["details"]
         else:
-            logger.info(f"IAM permission analysis step details: {result.get('details')}.")
-
+            logger.info(
+                f"IAM permission analysis step details: {result.get('details')}."
+            )
 
         return {"action_results": results, "enriched_data": enriched_data}
