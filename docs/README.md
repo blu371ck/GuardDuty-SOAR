@@ -1,8 +1,3 @@
----
-cover: .gitbook/assets/guardduty_soar_logo.png
-coverY: 0
----
-
 # Introduction
 
 ## Welcome to GuardDuty SOAR
