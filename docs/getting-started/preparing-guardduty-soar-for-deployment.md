@@ -132,7 +132,11 @@ When configuring the Lambda function, use the following settings:
   * <mark style="color:$primary;">`sns:Publish`</mark>
   * <mark style="color:$primary;">`logs:CreateLogGroup`</mark>, <mark style="color:$primary;">`logs:CreateLogStream`</mark>, <mark style="color:$primary;">`logs:PutLogEvents`</mark> (for CloudWatch Logging)
 
-> **NOTE:** A full list of current permissions used by the code is listed in the [IAM Permissions](iam-permissions.md) section. This allows you to implement least-privilege permissions. There is also an IAM permissions section for testing, that includes more permissions needed for running the test suites.
+{% hint style="info" %}
+### **Note**
+
+A full list of current permissions used by the code is listed in the [IAM Permissions](iam-permissions.md) section. This allows you to implement least-privilege permissions. There is also an IAM permissions section for testing, that includes more permissions needed for running the test suites.
+{% endhint %}
 
 * **Timeout**: Start with a timeout of 90 seconds. This may need to be adjusted based on the complexity of your playbooks and network latency.
 * **Memory**: Start with 256 MB. Increase if your playbooks perform memory-intensive operations.

@@ -172,3 +172,9 @@ This section provides a collection of live-action test scenarios that you can ru
 
 Do to the nature of the tests, Terraform cannot clean up what it doesn't know about. Anything that is created as a result of the test, needs to be manually cleaned up in these scenarios. For instance, EC2 Instance Compromise playbook will provision a new security group, and snapshots for each volume. Those particular items would need to be manually cleaned.
 {% endhint %}
+
+{% hint style="info" %}
+### Note
+
+We will provide a list of all items that need deleted within the README.md of each validation scenario.
+{% endhint %}
