@@ -1,4 +1,4 @@
-# Getting Started
+# 🚀 Getting Started
 
 To help you get started with GuardDuty-SOAR, we'll cover a few important topics:
 

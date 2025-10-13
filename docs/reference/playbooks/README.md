@@ -1,4 +1,4 @@
-# Playbooks
+# 📑 Playbooks
 
 The following sections provide a detailed reference for all playbooks currently built into GuardDuty-SOAR.
 
