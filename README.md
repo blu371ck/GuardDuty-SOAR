@@ -1,4 +1,5 @@
 ![guardduty_image](./images/guardduty_soar_logo.png)
+
 ![Static Badge](https://img.shields.io/badge/Alpha-BBB?style=plastic&label=Dev%20Stage)
 ![Static Badge](https://img.shields.io/badge/Python-3.13-BBB?logo=python&logoColor=fff)
 ![isort](https://img.shields.io/badge/%20Import_Style-isort-BBB?style=plastic&logo=Python&logoColor=FFFFFF)
@@ -7,6 +8,7 @@
 ![Static Badge](https://img.shields.io/badge/pytest-BBB?style=plastic&logo=pytest&logoColor=FFFFFF)
 ![UV](https://img.shields.io/badge/uv-BBB?style=plastic&logo=uv&logoColor=FFFFFF)
 ![AWS](https://custom-icon-badges.demolab.com/badge/AWS-BBB.svg?logo=aws&logoColor=FFFFFF)
+[![Documentation](https://img.shields.io/badge/Documentation-GitBook-FFFFFF?style=plastic)](https://guardduty-soar.gitbook.io/guardduty-soar/)
 
 GuardDuty SOAR is a fully serverless, event-driven SOAR (Security Orchestration, Automation, and Response) framework built on AWS. It transforms your AWS security posture from reactive to proactive by providing a robust, extensible, and cost-effective solution to automate the remediation of AWS GuardDuty findings in near real-time.
 
@@ -39,3 +41,7 @@ This project is developed in stages. Here is a high-level overview of our progre
 | ☐ Malware Protection for S3 Findings | | |
 | ☐ Runtime Monitoring Findings | | |
 | ☐ Attack Sequence Findings   | | |
+
+## Documentation
+
+[![Documentation](https://img.shields.io/badge/Documentation-GitBook-4785FF?style=for-the-badge)](https://guardduty-soar.gitbook.io/)
