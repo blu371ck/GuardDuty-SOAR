@@ -39,7 +39,7 @@ class EC2CredentialExfiltrationPlaybook(EC2BasePlaybook):
         results.append({**result, "action_name": "EnrichFinding"})
         logger.info("Successfully performed enrichment step.")
 
-        # Step 3: We isolate the instance to stop anything malicious activity in
+        # Step 3: We isolate the instance to stop any malicious activity in
         # progress.
         result = self.isolate_instance.execute(event, config=self.config)
         if result["status"] == "error":

@@ -1,7 +1,7 @@
-# EC2 Instance Compromise Full Check
+# EC2 Instance Compromise Short Check
 
 ## Objective
-This scenario validates the full workflow of the EC2InstanceCompromisePlaybook on an instance without an instance profile or EBS volumes. It tests the application's ability to perform a sequence of forensic and remediation actions, including:
+This scenario validates the full workflow of the EC2InstanceCompromisePlaybook on an instance without an instance profile or extra EBS volumes. It tests the application's ability to perform a sequence of forensic and remediation actions, including:
 - Tagging the instance.
 - Dynamically creating a quarantine security group and isolating the instance.
 - Terminating the instance (if configured).

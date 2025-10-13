@@ -121,7 +121,12 @@ class IamForensicsPlaybook(IamBasePlaybook):
                 f"AnalyzeIamPermissions failed: {error_details}."
             )
         results.append({**result, "action_name": "AnalyzeIamPermissions"})
-        logger.info("Successfully analyzed IAM principals permissions.")
-        enriched_data["permission_analysis"] = result["details"]
+
+        if isinstance(result.get("details"), dict):
+            logger.info("Successfully analyzed IAM principals permissions.")
+            enriched_data["permission_analysis"] = result["details"]
+        else:
+            logger.info(f"IAM permission analysis step details: {result.get('details')}.")
+
 
         return {"action_results": results, "enriched_data": enriched_data}
