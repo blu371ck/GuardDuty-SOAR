@@ -1,21 +1,18 @@
 # EC2 Instance Compromise Full Check
 
 ## Objective
-This scenario validates the full workflow of the EC2InstanceCompromisePlaybook. It tests the application's ability to perform a sequence of forensic and remediation actions, including:
+This scenario validates the full workflow of the EC2InstanceCompromisePlaybook on an instance without an instance profile or EBS volumes. It tests the application's ability to perform a sequence of forensic and remediation actions, including:
 - Tagging the instance.
 - Dynamically creating a quarantine security group and isolating the instance.
-- Quarantining the instance's IAM Role by attaching a deny-all policy.
-- Creating snapshots of all attached EBS volumes.
 - Terminating the instance (if configured).
+- Base volume snapshot
 
 ## Infrastructure Created
 This Terraform script will provision the following AWS resources:
 - A new VPC and Subnet
 - An Internet Gateway and Route Table
 - A default Security Group
-- Multiple EBS volumes
-- An IAM Role and Instance Profile
-- An EC2 instance with the profile attached and ebs volumes attached
+- An EC2 instance with no profile
 
 ## Instructions
 ### 1. Deploy the Test Infrastructure
@@ -39,8 +36,6 @@ aws lambda invoke \
 ### 3. Verify the Results
 After the playbook runs, you can check the following in your AWS account to confirm the actions were successful:
 - EC2 Console: The instance should be in a "shutting-down" or "terminated" state. A new security group named gd-soar-quarantine-i-... will have been created.
-- EBS Snapshots: You will find new snapshots whose descriptions contain the ID of the test instance.
-- IAM Console: The IAM role created by Terraform will have the AWSDenyAll policy attached to it.
 - Notifications: You should receive a "Playbook Complete" notification via your configured SES or SNS channel.
 
 ## ⚠️ Cleanup Instructions
