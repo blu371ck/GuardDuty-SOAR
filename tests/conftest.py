@@ -28,13 +28,22 @@ def mock_app_config():
 
 @pytest.fixture
 def port_probe_finding(guardduty_finding_detail):
-    """Provides a mock finding for a port probe event."""
+    """
+    Provides a mock finding for a port probe event with the correct
+    PORT_PROBE action structure.
+    """
     finding = copy.deepcopy(guardduty_finding_detail)
     finding["Type"] = "Recon:EC2/PortProbeUnprotectedPort"
     finding["Service"] = {
         "Action": {
-            "NetworkConnectionAction": {
-                "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
+            "ActionType": "PORT_PROBE",
+            "PortProbeAction": {
+                "PortProbeDetails": [
+                    {
+                        "LocalPortDetails": {"Port": 22},
+                        "RemoteIpDetails": {"IpAddressV4": "198.51.100.5"}
+                    }
+                ]
             }
         }
     }

@@ -282,21 +282,49 @@ def temporary_nacl(temporary_vpc):
     yield resources
 
 
-def test_block_malicious_ip_integration(
-    port_probe_finding, temporary_nacl, real_app_config
+def test_block_malicious_ip_integration_network_connection(
+    ssh_brute_force_finding, temporary_nacl, real_app_config
 ):
-    """Tests that BlockMaliciousIpAction can add deny rules to a NACL."""
+    """
+    Tests that BlockMaliciousIpAction can add deny rules for a
+    NETWORK_CONNECTION finding type.
+    """
     subnet_id = temporary_nacl["subnet_id"]
     nacl_id = temporary_nacl["nacl_id"]
     malicious_ip = "198.51.100.25"
 
+    finding = ssh_brute_force_finding
+    finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0]["SubnetId"] = subnet_id
+    finding["Service"]["Action"]["NetworkConnectionAction"]["RemoteIpDetails"]["IpAddressV4"] = malicious_ip
+
+    session = boto3.Session()
+    action = BlockMaliciousIpAction(session, real_app_config)
+    result = action.execute(finding)
+
+    assert result["status"] == "success"
+
+    ec2_client = session.client("ec2")
+    updated_nacl = ec2_client.describe_network_acls(NetworkAclIds=[nacl_id])["NetworkAcls"][0]
+    new_rules = [
+        e for e in updated_nacl["Entries"]
+        if e["RuleAction"] == "deny" and e["CidrBlock"] == f"{malicious_ip}/32"
+    ]
+    assert len(new_rules) == 2, "Deny rules for NetworkConnection IP were not created."
+
+
+def test_block_malicious_ip_integration_port_probe(
+    port_probe_finding, temporary_nacl, real_app_config
+):
+    """
+    Tests that BlockMaliciousIpAction correctly parses and blocks an IP
+    from a PORT_PROBE finding type.
+    """
+    subnet_id = temporary_nacl["subnet_id"]
+    nacl_id = temporary_nacl["nacl_id"]
+    malicious_ip = "198.51.100.5"
+
     finding = port_probe_finding
-    finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0][
-        "SubnetId"
-    ] = subnet_id
-    finding["Service"]["Action"]["NetworkConnectionAction"]["RemoteIpDetails"][
-        "IpAddressV4"
-    ] = malicious_ip
+    finding["Resource"]["InstanceDetails"]["NetworkInterfaces"][0]["SubnetId"] = subnet_id
 
     session = boto3.Session()
     action = BlockMaliciousIpAction(session, real_app_config)
@@ -313,4 +341,4 @@ def test_block_malicious_ip_integration(
         for e in updated_nacl["Entries"]
         if e["RuleAction"] == "deny" and e["CidrBlock"] == f"{malicious_ip}/32"
     ]
-    assert len(new_rules) == 2
+    assert len(new_rules) == 2, "Deny rules for the PortProbe IP were not created."

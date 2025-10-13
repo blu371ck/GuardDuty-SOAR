@@ -15,7 +15,7 @@
         "Resource": {
             "AccessKeyDetails": {
                 "AccessKeyId": "ASIA_PLACEHOLDER_KEY",
-                "PrincipalId": "057372331974",
+                "PrincipalId": "YOUR_AWS_ACCOUNT_ID",
                 "UserName": "root",
                 "UserType": "Root"
             },
