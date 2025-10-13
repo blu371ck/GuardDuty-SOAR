@@ -106,6 +106,8 @@ These are broad permissions required by a developer or a CI/CD pipeline to run t
 
 * <mark style="color:$primary;">`ssm:GetParameter`</mark>&#x20;
 
-> **Note on SQS/SNS Permissions**\
-> \
-> These permissions are used by the E2E test suite to create a temporary notification verification channel. The tests dynamically create an SQS queue and subscribe it to the application's SNS topic. This allows the test to programmatically capture and validate the content of the <mark style="color:$primary;">`playbook_started`</mark> and <mark style="color:$primary;">`playbook_completed`</mark> notifications, ensuring the entire workflow is functioning correctly.
+{% hint style="info" %}
+## Note on SNS/SQS Permissions
+
+These permissions are used by the E2E test suite to create a temporary notification verification channel. The tests dynamically create an SQS queue and subscribe it to the application's SNS topic. This allows the test to programmatically capture and validate the content of the <mark style="color:$primary;">`playbook_started`</mark> and <mark style="color:$primary;">`playbook_completed`</mark> notifications, ensuring the entire workflow is functioning correctly.
+{% endhint %}

@@ -19,6 +19,8 @@ The order of precedence is:
 3. Hardcoded Defaults (Lowest Priority): Fallback values defined directly in the application code for essential parameters if they are not specified anywhere else.
 
 {% hint style="info" %}
+## Note
+
 We do utilize some hard-coded default values. For instance, we have a quarantine action, that isolates an IAM principal with a deny all policy. Instead of asking for a custom deny-all policy from the end-user, we explicitly define the use of AWS's managed <mark style="color:$primary;">`AWSDenyAll`</mark> policy.
 {% endhint %}
 
@@ -35,5 +37,7 @@ When setting environment variables for your Lambda function, the naming conventi
 For example, the <mark style="color:$primary;">`log_level`</mark> parameter under the <mark style="color:$primary;">`[General]`</mark> section in <mark style="color:$primary;">`gd.cfg`</mark> becomes the environment variable <mark style="color:$primary;">`GD_LOG_LEVEL`</mark>.
 
 {% hint style="info" %}
+## Note
+
 This is the exact same naming convention used in <mark style="color:$primary;">`.env`</mark> for test configurations. So, if your in doubt of what the key would be, please refer to the <mark style="color:$primary;">`.env.example`</mark> file provided in the repository.
 {% endhint %}

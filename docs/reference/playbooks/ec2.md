@@ -9,6 +9,8 @@ This is the most comprehensive and aggressive response playbook, designed for fi
 <table data-header-hidden data-full-width="false"><thead><tr><th width="252"></th><th width="258"></th><th></th></tr></thead><tbody><tr><td><mark style="color:$primary;"><code>Backdoor:EC2/*</code></mark></td><td><mark style="color:$primary;"><code>Behavior:EC2/*</code></mark></td><td><mark style="color:$primary;"><code>CryptoCurrency:EC2/*</code></mark></td></tr><tr><td><mark style="color:$primary;"><code>DefenseEvasion:EC2/*</code></mark></td><td><mark style="color:$primary;"><code>Impact:EC2/*</code></mark></td><td><mark style="color:$primary;"><code>Recon:EC2/Portscan</code></mark></td></tr><tr><td><mark style="color:$primary;"><code>Trojan:EC2/*</code></mark></td><td><mark style="color:$primary;"><code>UnauthorizedAccess:EC2/MaliciousIPCaller.Customer</code></mark></td><td><mark style="color:$primary;"><code>UnauthorizedAccess:EC2/TorClient</code></mark></td></tr><tr><td><mark style="color:$primary;"><code>UnauthorizedAccess:EC2/TorRelay</code></mark></td><td><mark style="color:$primary;"><code>UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS</code></mark></td><td><mark style="color:$primary;"><code>UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS</code></mark></td></tr></tbody></table>
 
 {% hint style="info" %}
+## **Note**
+
 **A note on** <mark style="color:$primary;">`UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS`</mark> **and** <mark style="color:$primary;">`UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS`</mark>**, these two findings are related to an EC2 instances profile becoming compromised. So, we run the** <mark style="color:$primary;">`EC2InstanceCompromisePlaybook`</mark> **as it also places a deny-all policy on the instance profile, which will render the credentials useless.**
 {% endhint %}
 
@@ -55,6 +57,8 @@ This playbook is triggered by findings that suggest IAM credentials may have bee
   5. **Create Snapshots**: Takes snapshots of all attached EBS volumes.
 
 {% hint style="info" %}
+## Note
+
 This playbook intentionally does not terminate the instance, allowing an analyst to perform a live investigation.
 {% endhint %}
 
@@ -68,6 +72,8 @@ This playbook responds to findings where a potentially sensitive port on an EC2 
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 
 {% hint style="info" %}
+## Note
+
 A note on <mark style="color:$primary;">`Recon:EC2/PortProbeEMRUnprotectedPort`</mark> . This finding is the EC2 instance within an EMR cluster. Not an actual EMR cluster, so we handle it the same way as other EC2 instances with this finding.
 {% endhint %}
 

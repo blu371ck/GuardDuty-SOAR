@@ -9,11 +9,10 @@ All parameters available in the <mark style="color:$primary;">`gd.cfg`</mark> fi
 For example:
 
 * <mark style="color:$primary;">`gd.cfg`</mark>: <mark style="color:$primary;">`[General]`</mark> -> <mark style="color:$primary;">`log_level`</mark> becomes <mark style="color:$primary;">`.env`</mark>: <mark style="color:$primary;">`GD_LOG_LEVEL`</mark>
-* <mark style="color:$primary;">`gd.cfg`</mark>: <mark style="color:$primary;">`[EC2]`</mark> -> <mark style="color:$primary;">`quarantine_security_group_id`</mark> becomes <mark style="color:$primary;">`.env`</mark>: <mark style="color:$primary;">`GD_QUARANTINE_SG_ID`</mark>
 
 The following is a complete list of the available environment variables and their corresponding <mark style="color:$primary;">`gd.cfg`</mark> parameters.
 
-### \[General]
+### General
 
 | .env                 | gd.cfg            |
 | -------------------- | ----------------- |
@@ -21,7 +20,7 @@ The following is a complete list of the available environment variables and thei
 | `GD_BOTO_LOG_LEVEL`  | `boto_log_level`  |
 | `GD_IGNORE_FINDINGS` | `ignore_findings` |
 
-### \[Notifications]
+### Notifications
 
 | .env                          | gd.cfg                     |
 | ----------------------------- | -------------------------- |
@@ -30,7 +29,7 @@ The following is a complete list of the available environment variables and thei
 | `GD_ALLOW_SNS`                | `allow_sns`                |
 | `GD_TOPIC_ARN`                | `sns_topic_arn`            |
 
-### \[EC2]
+### EC2
 
 | .env                             | gd.cfg                        |
 | -------------------------------- | ----------------------------- |
@@ -38,7 +37,7 @@ The following is a complete list of the available environment variables and thei
 | `GD_ALLOW_TERMINATE`             | `allow_terminate`             |
 | `GD_ALLOW_REMOVE_PUBLIC_ACCESS`  | `allow_remove_public_access`  |
 
-### \[IAM]
+### IAM
 
 | .env                                | gd.cfg                           |
 | ----------------------------------- | -------------------------------- |

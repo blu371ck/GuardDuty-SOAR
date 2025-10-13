@@ -10,6 +10,8 @@ In the GuardDuty-SOAR application, a Playbook is a Python class with a defined s
 * Decorator Registration: A Playbook is registered to handle one or more GuardDuty finding types using the <mark style="color:$primary;">`@register_playbook(...)`</mark> decorator. This allows the application's engine to automatically select the correct Playbook when a finding is received.
 
 {% hint style="info" %}
+## Note
+
 We will eventually add the ability to add new actions and playbooks into a plugins directory. This functionality will be directly possible because of the registration decorator. Allowing end-users to create fully customizable playbooks using pre-built actions, or their own action logic. (This functionality is on the schedule to be worked on after all base items have been covered.)
 {% endhint %}
 
