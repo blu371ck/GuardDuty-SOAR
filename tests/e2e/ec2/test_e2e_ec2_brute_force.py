@@ -162,7 +162,7 @@ def test_ec2_brute_force_playbook_e2e_as_source(
             "AttachedPolicies"
         ]
         attached_arns = [p["PolicyArn"] for p in attached_policies]
-        assert real_app_config.iam_deny_all_policy_arn in attached_arns
+        assert "arn:aws:iam::aws:policy/AWSDenyAll" in attached_arns
         logger.info("IAM role was successfully quarantined.")
 
         # Verify notifications

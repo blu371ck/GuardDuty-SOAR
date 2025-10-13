@@ -92,7 +92,7 @@ def test_ec2_instance_compromise_playbook_e2e(
         ]
         attached_arns = [p["PolicyArn"] for p in attached_policies]
         assert (
-            real_app_config.iam_deny_all_policy_arn in attached_arns
+            "arn:aws:iam::aws:policy/AWSDenyAll" in attached_arns
         ), "Deny-all policy was not attached."
         logger.info(f"IAM role {role_name} was successfully quarantined.")
 

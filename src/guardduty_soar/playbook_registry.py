@@ -35,7 +35,7 @@ def get_playbook_instance(finding_type: str, config: AppConfig) -> "BasePlaybook
     if not playbook_class:
         raise ValueError(f"No playbook registered for finding type: {finding_type}.")
 
-    logger.info(f"Found playbook: '{str(playbook_class)}'.")
+    logger.info(f"Found playbook: '{playbook_class.__name__}'.")
     return playbook_class(config)
 
 

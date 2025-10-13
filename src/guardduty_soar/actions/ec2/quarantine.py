@@ -62,7 +62,7 @@ class QuarantineInstanceProfileAction(BaseAction):
                 return {"status": "error", "details": details}
 
             role_name = roles[0]["RoleName"]  # This is the correct role name
-            deny_policy_arn = self.config.iam_deny_all_policy_arn
+            deny_policy_arn = "arn:aws:iam::aws:policy/AWSDenyAll"
 
             # Step 4: Attach the deny policy to the correct role
             logger.warning(

@@ -14,7 +14,6 @@ class AppConfig:
     log_level: str
     boto_log_level: str
     ignored_findings: List[str]
-    iam_deny_all_policy_arn: Optional[str]
     snapshot_description_prefix: str
     allow_terminate: bool
     allow_remove_public_access: bool
@@ -90,8 +89,6 @@ def get_config() -> AppConfig:
         log_level=os.environ.get("GD_LOG_LEVEL")
         or config.get("General", "log_level", fallback="INFO").upper(),
         cloudtrail_history_max_results=validated_ct_results,
-        iam_deny_all_policy_arn=os.environ.get("GD_IAM_DENY_ALL_POLICY_ARN")
-        or config.get("EC2", "iam_deny_all_policy_arn", fallback=None),
         allow_terminate=os.environ.get("GD_ALLOW_TERMINATE") is not None
         or config.getboolean("EC2", "allow_terminate", fallback=True),
         allow_remove_public_access=os.environ.get("GD_REMOVE_PUBLIC_ACCESS") is not None
