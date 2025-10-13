@@ -24,6 +24,8 @@ This set of permissions should be attached to the IAM Role that your AWS Lambda 
 * <mark style="color:$primary;">`ec2:ModifyInstanceAttribute`</mark>&#x20;
 * <mark style="color:$primary;">`ec2:RevokeSecurityGroupIngress`</mark>&#x20;
 * <mark style="color:$primary;">`ec2:TerminateInstances`</mark>&#x20;
+* <mark style="color:$primary;">`ec2:CreateSecurityGroup`</mark>&#x20;
+* <mark style="color:$primary;">`ec2:RevokeSecurityGroupEgress`</mark>
 
 **AWS IAM**
 
@@ -37,6 +39,7 @@ This set of permissions should be attached to the IAM Role that your AWS Lambda 
 * <mark style="color:$primary;">`iam:TagUser`</mark>&#x20;
 * <mark style="color:$primary;">`iam:TagRole`</mark>
 * <mark style="color:$primary;">`iam:PutUserPolicy`</mark>&#x20;
+* <mark style="color:$primary;">`iam:GetInstanceProfile`</mark>
 
 **AWS CloudTrail**
 

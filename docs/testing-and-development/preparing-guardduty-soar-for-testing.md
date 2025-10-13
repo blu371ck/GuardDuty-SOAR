@@ -6,9 +6,7 @@ This project employs a multi-layered testing strategy to ensure code quality, co
 
 The test suite is divided into three distinct categories, which can be run independently.
 
-<table><thead><tr><th width="172">Test Type</th><th>Description</th></tr></thead><tbody><tr><td>Unit</td><td>Fast, isolated tests that validate a single component (e.g., an Action or helper function) in memory without external dependencies.</td></tr><tr><td>Integration</td><td>Verifies individual Actions against live AWS services in isolated, temporary environments. Requires AWS credentials.</td></tr><tr><td>End-to-End (E2E)</td><td>Simulates a full playbook execution triggered by a mock GuardDuty event, interacting with multiple live AWS services to validate the complete workflow. Requires AWS credentials.</td></tr></tbody></table>
-
-Export to Sheets
+<table><thead><tr><th width="172">Test Type</th><th>Description</th></tr></thead><tbody><tr><td>Unit</td><td>Fast, isolated tests that validate a single component (e.g., an Action or helper function) in memory without external dependencies.</td></tr><tr><td>Integration</td><td>Verifies individual Actions against live AWS services in isolated, temporary environments. Requires AWS credentials.</td></tr><tr><td>End-to-End (E2E)</td><td>Simulates a full playbook execution triggered by a mock GuardDuty event, interacting with multiple live AWS services to validate the complete workflow. Requires AWS credentials.</td></tr><tr><td>Validation Scenarios</td><td><p>This directory contains Terraform scripts that provision the necessary AWS infrastructure for live validation scenarios.<br></p><p>These scripts are designed to test a fully deployed GuardDuty-SOAR Lambda function against realistic situations. It is highly recommended to run these scenarios as a final verification step after deploying the application, but before connecting the Lambda function to a live Guard-Duty event stream.</p></td></tr></tbody></table>
 
 ***
 
@@ -52,8 +50,13 @@ The integration and E2E tests require AWS credentials and resource identifiers. 
     cp .env.example .env
     ```
 
-    > **Note**: The <mark style="color:$primary;">`.env`</mark> file is listed in <mark style="color:$primary;">`.gitignore`</mark> and will never be committed to source control, ensuring your credentials remain private.
-2.  Populate the <mark style="color:$primary;">`.env`</mark> File: Open the newly created <mark style="color:$primary;">`.env`</mark> file and replace the placeholder values with resources from your AWS test account. These environment variables directly correspond to the settings in the production <mark style="color:$primary;">`gd.cfg`</mark> file.
+{% hint style="info" %}
+## **Note**:
+
+The <mark style="color:$primary;">`.env`</mark> file is listed in <mark style="color:$primary;">`.gitignore`</mark> and will never be committed to source control, ensuring your credentials remain private.
+{% endhint %}
+
+1.  Populate the <mark style="color:$primary;">`.env`</mark> File: Open the newly created <mark style="color:$primary;">`.env`</mark> file and replace the placeholder values with resources from your AWS test account. These environment variables directly correspond to the settings in the production <mark style="color:$primary;">`gd.cfg`</mark> file.
 
     ```bash
     # Environment variables for running GuardDuty SOAR tests
@@ -80,7 +83,7 @@ The integration and E2E tests require AWS credentials and resource identifiers. 
 
 Simple shortcuts are provided via <mark style="color:$primary;">`uv run`</mark> to execute different categories of tests using <mark style="color:$primary;">`pytest`</mark> markers.
 
-<table><thead><tr><th width="178">Test Suite</th><th>Command</th><th>Description</th></tr></thead><tbody><tr><td>Unit Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "not integration and not e2e"</code></mark></td><td>Runs all fast, local tests that do not require AWS credentials.</td></tr><tr><td>Integration Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "integration"</code></mark></td><td>Runs tests for individual Actions against live AWS services.</td></tr><tr><td>E2E Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "e2e"</code></mark></td><td>Runs full playbook simulations against live AWS services.</td></tr></tbody></table>
+<table><thead><tr><th width="178">Test Suite</th><th>Command</th><th>Description</th></tr></thead><tbody><tr><td>Unit Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "not integration and not e2e"</code></mark></td><td>Runs all fast, local tests that do not require AWS credentials.</td></tr><tr><td>Integration Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "integration"</code></mark></td><td>Runs tests for individual Actions against live AWS services.</td></tr><tr><td>E2E Tests</td><td><mark style="color:$primary;"><code>uv run pytest -m "e2e"</code></mark></td><td>Runs full playbook simulations against live AWS services.</td></tr><tr><td>Validation Scenarios</td><td>not ran with UV directions are below.</td><td>Full test scenarios before the application is fully deployed and hooked up.</td></tr></tbody></table>
 
 ***
 
@@ -111,3 +114,61 @@ Add the <mark style="color:$primary;">`-s`</mark> flag to any <mark style="color
 ```bash
 uv run pytest -s -m "e2e"
 ```
+
+***
+
+#### 4. Validation Scenarios
+
+This is the best way to verify that your Lambda is deployed correctly and has the necessary IAM permissions to execute its playbooks.
+
+This section provides a collection of live-action test scenarios that you can run in your own AWS account. Each scenario uses Terraform to create temporary "victim" resources and provides a sample event to trigger your GuardDuty-SOAR Lambda function.
+
+#### Available Scenarios
+
+* **ec2-instance-compromise-full**
+  * **This test runs against a full suite setup, ensuring all capabilities are tested. With multiple EBS volumes attached to the instance and a fully functional instance profile. (You can modify your configurations to test** <mark style="color:$primary;">allow\_terminate</mark> **functionality.)**
+* **ec2-instance-compromise-short**
+  * **This test runs against a bare EC2 setup. No instance-profile, no volumes attached. It's used to ensure that the missing objects are properly handled by the application.**
+
+#### Example Scenario Setup
+
+**Prerequisites**:
+
+* Terraform installed and configured with AWS credentials.
+* The GuardDuty-SOAR Lambda function is deployed in your AWS account.
+
+**Instructions**
+
+1.  Deploy the Test Infrastructure: Navigate to test directory and run Terraform.
+
+    ```bash
+    terraform init
+    terraform apply --auto-approve
+    ```
+2. Prepare the Test Event: We utilize Terraform to automatically populate a sample event finding with the newly created items ids. You have two actions you can use with this populated JSON.
+   1. **Scenario 1 - Invoke the Lambda using Lambdas test functionality in Console:** Use the provided JSON file, copy the contents and paste the contents into the test payload of the Lambda function. Save the new test with whatever name you like. Then, invoke the test.
+   2.  **Scenario 2 - Invoke the Lambda Function using CLI/API**: Use the AWS CLI to manually trigger your deployed Lambda function with the updated <mark style="color:$primary;">`event.auto.json`</mark>.
+
+       ```bash
+       aws lambda invoke \
+           --function-name Your-GuardDuty-SOAR-FunctionName \
+           --payload file://event.auto.json \
+           response.json
+       ```
+
+
+
+3. Verify the Results:
+   1. Check the EC2 Console: Navigate to the EC2 service. You should observe that your test instance is now associated with a new security group named `gd-soar-quarantine-...`.
+   2. Check Notifications: You should receive a "Playbook Complete" notification via your configured SES or SNS channel.
+   3. Check Logs: Review the CloudWatch logs for your Lambda function to see the detailed execution flow.&#x20;
+   4. Clean Up: Once you have verified the results, destroy the test infrastructure.
+   5. ```bash
+      terraform destroy --auto-approve
+      ```
+
+{% hint style="warning" %}
+## Cleanup Notes and Considerations
+
+Do to the nature of the tests, Terraform cannot clean up what it doesn't know about. Anything that is created as a result of the test, needs to be manually cleaned up in these scenarios. For instance, EC2 Instance Compromise playbook will provision a new security group, and snapshots for each volume. Those particular items would need to be manually cleaned.
+{% endhint %}
