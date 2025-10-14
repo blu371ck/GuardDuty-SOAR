@@ -33,10 +33,12 @@ This project is developed in stages. Here is a high-level overview of our progre
 | **Tasks:** Playbook and Action Creation | **Tasks:** Refactoring, Live Testing and Bug Fixes | **Tasks:** Issues, Documentation and Enhancements |
 | ✅ EC2 Findings | ☐ Code refactoring (where applicable) | ☐ Reported Issues |
 | ✅ IAM Findings | ☐ Test refactoring (where applicable) | ☐ Documentation refactoring and updating |
-| ☐ S3 Protection Findings | ☐ Live Terraform Testing | ☐ Feature request enhancements |
-| ☐ EKS Protection Findings | ☐ Bug Fixes (Continuous) | ☐ Bug Fixes (Continuous) |
-| ☐ RDS Protection Findings | ☐ Documentation Rough | |
-| ☐ Lambda Protection Findings | ☐ Light Enhancements | |
+| ✅ Live Terraform Testing | ☐ Bug Fixes (Continuous) | ☐ Feature request enhancements |
+| ✅ Documentation Rough |☐ Light Enhancements | ☐ Bug Fixes (Continuous)
+| ☐ S3 Protection Findings |  |  |
+| ☐ EKS Protection Findings |  |  |
+| ☐ RDS Protection Findings |  | |
+| ☐ Lambda Protection Findings |  | |
 | ☐ Malware Protection for EC2 Findings | | |
 | ☐ Malware Protection for S3 Findings | | |
 | ☐ Runtime Monitoring Findings | | |
