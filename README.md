@@ -44,4 +44,4 @@ This project is developed in stages. Here is a high-level overview of our progre
 
 ## Documentation
 
-[![Documentation](https://img.shields.io/badge/Documentation-GitBook-4785FF?style=for-the-badge)](https://guardduty-soar.gitbook.io/)
+[![Documentation](https://img.shields.io/badge/Documentation-GitBook-4785FF?style=for-the-badge)](https://guardduty-soar.gitbook.io/guardduty-soar/)

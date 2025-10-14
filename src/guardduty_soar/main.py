@@ -113,7 +113,9 @@ def handler(event: LambdaEvent, context: LambdaContext) -> Response:
 
         # Validate finding is not an ignored finding
         if event["detail"]["Type"] in config.ignored_findings:
-            logger.info(f"Finding type: {event["detail"]["Type"]} explicitly ignored in configuration.")
+            logger.info(
+                f"Finding type: {event["detail"]["Type"]} explicitly ignored in configuration."
+            )
             return {
                 "statusCode": 200,
                 "message": f"Finding Type: {event["detail"]["Type"]} explicitly ignored in configuration.",
