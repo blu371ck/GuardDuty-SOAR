@@ -5,6 +5,7 @@
   * [🚀 Preparing GuardDuty-SOAR for Deployment](getting-started/preparing-guardduty-soar-for-deployment.md)
   * [⚙️ Configurations](getting-started/configurations.md)
   * [🔐 IAM Permissions](getting-started/iam-permissions.md)
+  * [📣 Notifications](getting-started/notifications.md)
 * [🧪 Testing and Development](testing-and-development/README.md)
   * [🧪 Preparing GuardDuty-SOAR for Testing](testing-and-development/preparing-guardduty-soar-for-testing.md)
   * [🎛️ Testing Configurations](testing-and-development/testing-configurations.md)
