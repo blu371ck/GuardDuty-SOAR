@@ -8,7 +8,7 @@
 ![Static Badge](https://img.shields.io/badge/pytest-BBB?style=plastic&logo=pytest&logoColor=FFFFFF)
 ![UV](https://img.shields.io/badge/uv-BBB?style=plastic&logo=uv&logoColor=FFFFFF)
 ![AWS](https://custom-icon-badges.demolab.com/badge/AWS-BBB.svg?logo=aws&logoColor=FFFFFF)
-[![Documentation](https://img.shields.io/badge/Documentation-GitBook-FFFFFF?style=plastic)](https://guardduty-soar.gitbook.io/guardduty-soar/)
+[![Documentation](https://img.shields.io/badge/Documentation-MkDocs-FFFFFF?style=plastic)](https://docs.guardduty-soar.com)
 
 GuardDuty SOAR is a fully serverless, event-driven SOAR (Security Orchestration, Automation, and Response) framework built on AWS. It transforms your AWS security posture from reactive to proactive by providing a robust, extensible, and cost-effective solution to automate the remediation of AWS GuardDuty findings in near real-time.
 
@@ -46,4 +46,4 @@ This project is developed in stages. Here is a high-level overview of our progre
 
 ## Documentation
 
-[![Documentation](https://img.shields.io/badge/Documentation-GitBook-4785FF?style=for-the-badge)](https://guardduty-soar.gitbook.io/guardduty-soar/)
+[![Documentation](https://img.shields.io/badge/Documentation-MkDocs-4785FF?style=for-the-badge)](https://docs.guardduty-soar.com)
