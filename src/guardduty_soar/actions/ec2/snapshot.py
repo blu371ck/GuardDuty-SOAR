@@ -32,16 +32,20 @@ class CreateSnapshotAction(BaseAction):
 
             reservations = response.get("Reservations", [])
             if not reservations:
+                logger.warning("No reservations found, returning.")
                 return []
 
             instances = reservations[0].get("Instances", [])
             if not instances:
+                logger.warning("No instances found in reservations, returning.")
                 return []
 
             block_devices = instances[0].get("BlockDeviceMappings", [])
             if not block_devices:
+                logger.warning("No block devices found, returning.")
                 return []
 
+            logger.info("Found block devices, compiling list of details.")
             # Extract the VolumeId from each block device mapping
             return [
                 device["Ebs"]["VolumeId"]
@@ -56,14 +60,17 @@ class CreateSnapshotAction(BaseAction):
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
-
+        logger.info(
+            f"ACTION: Attempting to create snapshots on instance: {instance_id}."
+        )
+        logger.info(f"Checking for EBS volumes on instance: {instance_id}.")
         # Use boto3 call to get the list of EBS volumes.
         volume_ids = self._get_volume_ids(instance_id)
 
         if not volume_ids:
             details = f"Instance {instance_id} has no EBS volumes attached or could not be described. Skipping snapshot action."
-            logger.info(details)
-            return {"status": "success", "details": details}
+            logger.warning(details)
+            return {"status": "skipped", "details": details}
 
         logger.warning(
             f"ACTION: Creating snapshots for volumes attached to instance {instance_id}: {volume_ids}"

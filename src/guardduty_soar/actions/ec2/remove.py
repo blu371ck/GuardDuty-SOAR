@@ -28,9 +28,12 @@ class RemovePublicAccessAction(BaseAction):
                 "Action 'allow_remove_public_access' is disabled in config. Skipping."
             )
             logger.warning(details)
-            return {"status": "success", "details": details}
+            return {"status": "skipped", "details": details}
 
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
+        logger.info(
+            f"ACTION: Attempting to remove public access to instance: {instance_id}."
+        )
         revoked_rules_summary = []
 
         try:
@@ -38,6 +41,9 @@ class RemovePublicAccessAction(BaseAction):
             if not response.get("Reservations") or not response["Reservations"][0].get(
                 "Instances"
             ):
+                logger.warning(
+                    f"No instances {instance_id} found. Potentially already terminated."
+                )
                 return {
                     "status": "success",
                     "details": f"Instance {instance_id} not found.",
@@ -47,6 +53,7 @@ class RemovePublicAccessAction(BaseAction):
             security_groups = instance_info.get("SecurityGroups", [])
 
             if not security_groups:
+                logger.warning(f"No security groups found for instance {instance_id}.")
                 return {
                     "status": "success",
                     "details": f"No security groups found on instance {instance_id}.",

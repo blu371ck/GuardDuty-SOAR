@@ -30,7 +30,7 @@ class TerminateInstanceAction(BaseAction):
             )
             logger.warning(details)
             # Return 'success' because this is an intentional stop, not an error.
-            return {"status": "success", "details": details}
+            return {"status": "skipped", "details": details}
 
         logger.warning(f"ACTION: Terminating instance: {instance_id}")
 

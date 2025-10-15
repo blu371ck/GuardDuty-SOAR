@@ -23,10 +23,8 @@ class NotificationManager:
         self.actions: List[BaseNotificationAction] = []
         if config.allow_ses:
             self.actions.append(SendSESNotificationAction(session, config))
-            logger.info("SES notifications enabled.")
         if config.allow_sns:
             self.actions.append(SendSNSNotificationAction(session, config))
-            logger.info("SNS notifications enabled.")
 
     def _dispatch(self, **kwargs):
         """Helper to call execute on all registered actions."""
@@ -35,7 +33,7 @@ class NotificationManager:
                 action.execute(**kwargs)
             except Exception as e:
                 logger.error(
-                    f"Failed to exeute notification action {type(action).__name__}: {e}."
+                    f"Failed to execute notification action {type(action).__name__}: {e}."
                 )
 
     def send_starting_notification(self, event: GuardDutyEvent, playbook_name: str):

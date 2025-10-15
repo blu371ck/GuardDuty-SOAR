@@ -1,12 +1,12 @@
 import logging
 from datetime import datetime
-from typing import List, cast
+from typing import List
 
 import boto3
 
 from guardduty_soar.config import AppConfig
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import ActionResult, EnrichedEC2Finding, GuardDutyEvent
+from guardduty_soar.models import ActionResult, GuardDutyEvent
 from guardduty_soar.notifications.manager import NotificationManager
 from guardduty_soar.playbook_registry import get_playbook_instance
 from guardduty_soar.schemas import map_resource_to_model
@@ -80,10 +80,6 @@ class Engine:
                 ),
             )
 
-        # TODO Currently raising an exception for not having a playbook found.
-        # Will later be adding functionality to allow end-users to pick
-        # and choose which alerts trigger, making it no longer a valid
-        # exception.
         except (ValueError, PlaybookActionFailedError) as e:
             logger.critical(f"Playbook execution failed for {playbook_name}: {e}.")
 

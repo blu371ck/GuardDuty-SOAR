@@ -1,5 +1,4 @@
 import logging
-from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
@@ -32,11 +31,13 @@ class GetCloudTrailHistoryAction(BaseAction):
                 "details": "Required 'user_name' was not provided in kwargs.",
             }
 
-        logger.info(f"Getting CloudTrail History for principal: {user_name}.")
+        logger.warning(
+            f"ACTION: Getting CloudTrail History for principal: {user_name}."
+        )
 
         try:
             max_results = self.config.cloudtrail_history_max_results
-
+            logger.info(f"Max results for CloudTrail history set to {max_results}.")
             response = self.cloudtrail_client.lookup_events(
                 LookupAttributes=[
                     {"AttributeKey": "Username", "AttributeValue": user_name}

@@ -42,6 +42,7 @@ class EnrichFindingWithInstanceMetadataAction(BaseAction):
                 "guardduty_finding": event,
                 "instance_metadata": instance_metadata,
             }
+            logger.info("Returning newly enriched dataset.")
 
             return {"status": "success", "details": enriched_finding}
 

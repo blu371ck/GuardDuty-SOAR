@@ -24,7 +24,7 @@ def test_action_skipped_when_disabled(mock_app_config, policies_factory):
     action = AnalyzePermissionsAction(MagicMock(), mock_app_config)
     result = action.execute(event={}, principal_policies=policies_factory())
 
-    assert result["status"] == "success"
+    assert result["status"] == "skipped"
     assert "disabled in config" in result["details"]
 
 

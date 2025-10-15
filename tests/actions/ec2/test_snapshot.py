@@ -86,7 +86,7 @@ def test_snapshot_action_no_volumes(guardduty_finding_detail, mock_app_config):
         action = CreateSnapshotAction(mock_session, mock_app_config)
         result = action.execute(guardduty_finding_detail)
 
-        assert result["status"] == "success"
+        assert result["status"] == "skipped"
         assert "no EBS volumes attached" in result["details"]
 
     stubber.assert_no_pending_responses()
@@ -110,8 +110,8 @@ def test_snapshot_action_describe_failure(guardduty_finding_detail, mock_app_con
         action = CreateSnapshotAction(mock_session, mock_app_config)
         result = action.execute(guardduty_finding_detail)
 
-        # This is still a "success" for the playbook, as there's no action to take.
-        assert result["status"] == "success"
+        # This is a "skipped" for the playbook, as there's no action to take.
+        assert result["status"] == "skipped"
         assert "could not be described" in result["details"]
 
     stubber.assert_no_pending_responses()

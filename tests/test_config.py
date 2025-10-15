@@ -9,7 +9,6 @@ def test_config_loading_success(mocker):
     """
     Tests that get_config() correctly parses a valid config file.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     # Temporarily remove any real environment variables that could interfere.
     mocker.patch.dict("os.environ", clear=True)
 
@@ -37,7 +36,6 @@ def test_config_fallback_values(mocker):
     """
     Tests that get_config() uses fallback values for missing keys.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     # Ensure a clean environment for this test too.
     mocker.patch.dict("os.environ", clear=True)
 
@@ -57,7 +55,6 @@ def test_config_handles_missing_file_gracefully(mocker):
     Tests that get_config() returns a default AppConfig object
     when no files or environment variables are present.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     # Ensure a completely empty environment for this test.
     mocker.patch.dict("os.environ", clear=True)
 
@@ -73,13 +70,13 @@ def test_config_handles_missing_file_gracefully(mocker):
 @pytest.mark.parametrize(
     "config_value, expected_result",
     [
-        ("30", 30),  # Test a valid value within the range
-        ("1", 1),  # Test the minimum boundary
-        ("50", 50),  # Test the maximum boundary
-        ("0", 1),  # Test clamping a value below the minimum
-        ("100", 50),  # Test clamping a value above the maximum
-        ("abc", 25),  # Test fallback to default for a non-integer value
-        (None, 25),  # Test fallback to default when the key is missing
+        ("30", 30),
+        ("1", 1),
+        ("50", 50),
+        ("0", 1),
+        ("100", 50),
+        ("abc", 25),
+        (None, 25),
     ],
     ids=[
         "valid_value",
@@ -97,10 +94,8 @@ def test_cloudtrail_history_max_results_validation(
     """
     Tests the validation and clamping logic for cloudtrail_history_max_results.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     mocker.patch.dict("os.environ", clear=True)
 
-    # Build the mock config content based on the test case
     mock_config_content = "[General]\nlog_level = INFO\n"
     if config_value is not None:
         mock_config_content += f"[IAM]\ncloudtrail_history_max_results = {config_value}"
@@ -118,7 +113,6 @@ def test_cloudtrail_history_max_results_from_env_var(mocker):
     Tests that the cloudtrail_history_max_results setting is correctly
     read from an environment variable, overriding the config file.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     # Set the environment variable
     mocker.patch.dict(
         "os.environ", {"GD_CLOUDTRAIL_HISTORY_MAX_RESULTS": "42"}, clear=True
@@ -142,7 +136,6 @@ def test_config_analyze_iam_permissions_flag(mocker):
     """
     Tests that the analyze_iam_permissions boolean flag is read correctly.
     """
-    mocker.patch("guardduty_soar.config.boto3.Session")
     mocker.patch.dict("os.environ", clear=True)
 
     mock_config_content = """

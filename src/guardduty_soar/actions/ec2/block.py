@@ -23,6 +23,8 @@ class BlockMaliciousIpAction(BaseAction):
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         ips_to_block = []
+
+        logger.info(f"ACTION: Attempting to block malicious IP(s).")
         try:
             action_type = event["Service"]["Action"]["ActionType"]
 
@@ -55,8 +57,9 @@ class BlockMaliciousIpAction(BaseAction):
                 return {"status": "skipped", "details": details}
 
             if not ips_to_block:
+                logger.info("Found no IP addresses to block. Skipping.")
                 return {
-                    "status": "success",
+                    "status": "skipped",
                     "details": "No IP addresses were identified to block.",
                 }
 

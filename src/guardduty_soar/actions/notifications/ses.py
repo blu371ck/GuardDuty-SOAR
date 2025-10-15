@@ -18,9 +18,10 @@ class SendSESNotificationAction(BaseNotificationAction):
         self.ses_client = self.session.client("ses")
 
     def execute(self, **kwargs) -> ActionResponse:
-        logger.info("Executing SES action.")
+        logger.warning("ACTION: Executing SES action.")
         if not self.config.allow_ses:
-            return {"status": "success", "details": "SES notifications are disabled."}
+            logger.warning("SES is disabled in the configuration.")
+            return {"status": "skipped", "details": "SES notifications are disabled."}
 
         try:
             context = self._build_template_context(**kwargs)
@@ -41,6 +42,7 @@ class SendSESNotificationAction(BaseNotificationAction):
                     "Body": {"Text": {"Data": body}, "Html": {"Data": html_body}},
                 },
             )
+            logger.info("Successfully sent notification via SES.")
             return {
                 "status": "success",
                 "details": "Successfully sent notification via SES.",

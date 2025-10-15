@@ -29,10 +29,12 @@ class IsolateInstanceAction(BaseAction):
         try:
             # Step 1: Extract necessary IDs from the finding
             instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
+            logger.info(f"ACTION: Attempting to isolate EC2 instance: {instance_id}.")
             network_interfaces = event["Resource"]["InstanceDetails"].get(
                 "NetworkInterfaces"
             )
             if not network_interfaces:
+                logger.error(f"No network interfaces found for instance {instance_id}.")
                 return {
                     "status": "error",
                     "details": f"No network interfaces found for instance {instance_id}.",
@@ -40,6 +42,7 @@ class IsolateInstanceAction(BaseAction):
 
             vpc_id = network_interfaces[0].get("VpcId")
             if not vpc_id:
+                logger.error(f"No VPC ID found for instance {instance_id}.")
                 return {
                     "status": "error",
                     "details": f"No VPC ID found for instance {instance_id}.",

@@ -24,7 +24,9 @@ class QuarantineInstanceProfileAction(BaseAction):
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
-
+        logger.info(
+            f"ACTION: Attempting to quarantine instance profile attached to instance: {instance_id}."
+        )
         try:
             # Step 1: Get live instance metadata
             response = self.ec2_client.describe_instances(InstanceIds=[instance_id])
@@ -34,7 +36,7 @@ class QuarantineInstanceProfileAction(BaseAction):
             ):
                 details = f"Instance {instance_id} not found. Skipping role quarantine."
                 logger.warning(details)
-                return {"status": "success", "details": details}
+                return {"status": "skipped", "details": details}
 
             instance_metadata = response["Reservations"][0]["Instances"][0]
             iam_profile = instance_metadata.get("IamInstanceProfile")
@@ -42,7 +44,7 @@ class QuarantineInstanceProfileAction(BaseAction):
             if not iam_profile or not iam_profile.get("Arn"):
                 details = f"Instance {instance_id} has no IAM instance profile. Skipping role quarantine."
                 logger.info(details)
-                return {"status": "success", "details": details}
+                return {"status": "skipped", "details": details}
 
             # Step 2: Get the Instance Profile Name from its ARN
             instance_profile_arn = iam_profile["Arn"]
@@ -62,6 +64,7 @@ class QuarantineInstanceProfileAction(BaseAction):
                 return {"status": "error", "details": details}
 
             role_name = roles[0]["RoleName"]  # This is the correct role name
+            logger.info(f"Found instance role: {role_name}.")
             deny_policy_arn = "arn:aws:iam::aws:policy/AWSDenyAll"
 
             # Step 4: Attach the deny policy to the correct role

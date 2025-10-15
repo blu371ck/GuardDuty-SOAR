@@ -63,6 +63,8 @@ class TagIamPrincipalAction(BaseAction):
                 "details": "Required 'principal_identity' was not provided.",
             }
 
+        logger.warning(f"ACTION: Tagging IAM principal: {principal_identity}.")
+
         playbook_name = kwargs.get("playbook_name", "UnknownPlaybook")
         user_type = principal_identity.get("user_type")
         user_name = principal_identity.get("user_name")

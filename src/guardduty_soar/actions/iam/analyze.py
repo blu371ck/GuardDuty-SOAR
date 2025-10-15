@@ -15,7 +15,7 @@ class AnalyzePermissionsAction(BaseAction):
     def _normalize_statements(
         self, policy_document: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Hanldes cases where 'Statement' is a single dict instead of a list."""
+        """Handles cases where 'Statement' is a single dict instead of a list."""
         statements = policy_document.get("Statement", [])
         if isinstance(statements, dict):
             return [statements]
@@ -58,8 +58,9 @@ class AnalyzePermissionsAction(BaseAction):
         """
 
         if not self.config.analyze_iam_permissions:
+            logger.warning("IAM analysis is disabled in the configuration.")
             return {
-                "status": "success",
+                "status": "skipped",
                 "details": "IAM permission analysis is disabled in config.",
             }
 
@@ -73,6 +74,7 @@ class AnalyzePermissionsAction(BaseAction):
         logger.info("Analyzing IAM policies for overly permissive rules.")
         all_risks = {}
 
+        logger.info("Normalizing policies attached to IAM identity.")
         # Analyze attached policies
         for policy in principal_policies.get("attached_policies", []):
             policy_name = policy.get("PolicyName", "UnknownPolicy")
@@ -85,6 +87,7 @@ class AnalyzePermissionsAction(BaseAction):
             if policy_risks:
                 all_risks[f"AttachedPolicy: {policy_name}"] = policy_risks
 
+        logger.info("Normalizing inline policies on IAM identity.")
         # Analyze inline policies
         for name, doc in principal_policies.get("inline_policies", {}).items():
             policy_risks = []

@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.notifications.base import BaseNotificationAction
 from guardduty_soar.config import AppConfig
-from guardduty_soar.models import ActionResponse, EnrichedEC2Finding, GuardDutyEvent
+from guardduty_soar.models import ActionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +20,13 @@ class SendSNSNotificationAction(BaseNotificationAction):
 
     def execute(self, **kwargs) -> ActionResponse:
         if not self.config.allow_sns:
+            logger.warning("SNS notifications are disabled in the configuration.")
             return {
-                "status": "success",
+                "status": "skipped",
                 "details": "SNS notifications are disabled in config.",
             }
 
-        logger.info("Executing SNS action.")
+        logger.warning("ACTION: Executing SNS action.")
         try:
             context = self._build_template_context(**kwargs)
             template_type = kwargs.get("template_type", "starting")

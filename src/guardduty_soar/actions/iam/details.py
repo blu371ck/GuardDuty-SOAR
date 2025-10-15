@@ -68,6 +68,7 @@ class GetIamPrincipalDetailsAction(BaseAction):
     def _get_role_details(self, role_name: str) -> Dict[str, Any]:
         """Helper method to gather details for an IAM role."""
         role_info = self.iam_client.get_role(RoleName=role_name)["Role"]
+
         attached_policies_metas = self.iam_client.list_attached_role_policies(
             RoleName=role_name
         ).get("AttachedPolicies", [])
@@ -120,17 +121,21 @@ class GetIamPrincipalDetailsAction(BaseAction):
 
         user_type = principal_details.get("user_type")
         user_name = principal_details.get("user_name")
-        logger.info(f"Getting IAM details for {user_type}: {user_name}.")
+        logger.warning(f"ACTION: Getting IAM details for {user_type}: {user_name}.")
 
         try:
             if user_type == "IAMUser":
+                logger.info("Gathering IAM User details.")
                 result_details = self._get_user_details(user_name)
             elif user_type in ["AssumedRole", "Role"]:
+                logger.info("Gathering IAM Role details.")
                 role_name = user_name.split("/")[0]
                 result_details = self._get_role_details(role_name)
             elif user_type == "Root":
+                logger.info("Principal in event is Root user.")
                 result_details = {"details": "Principal is the AWS Account Root user."}
             else:
+                logger.error(f"Found unknown user type: {user_type}.")
                 return {"status": "error", "details": f"Unknown UserType: {user_type}."}
 
             return {"status": "success", "details": result_details}

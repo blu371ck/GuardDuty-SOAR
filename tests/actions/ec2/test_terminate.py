@@ -55,7 +55,7 @@ def test_terminate_action_disabled_in_config(guardduty_finding_detail, mock_app_
     action = TerminateInstanceAction(mock_session, mock_app_config)
     result = action.execute(guardduty_finding_detail)
 
-    assert result["status"] == "success"
+    assert result["status"] == "skipped"
     assert "Termination is disabled" in result["details"]
 
     # Assert that the 'terminate_instances' method on the client was never called.

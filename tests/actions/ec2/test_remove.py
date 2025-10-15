@@ -181,7 +181,7 @@ def test_remove_public_access_disabled_by_config(
 
     result = action.execute(guardduty_finding_detail)
 
-    # Disabled actions return successful responses
-    assert result["status"] == "success"
+    # Disabled actions return skipped responses
+    assert result["status"] == "skipped"
     assert "disabled in config" in result["details"]
     mock_session.client_assert_not_called()

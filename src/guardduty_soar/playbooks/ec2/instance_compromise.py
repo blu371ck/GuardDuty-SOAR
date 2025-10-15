@@ -1,6 +1,6 @@
 import logging
 
-from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
+from guardduty_soar.models import GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 

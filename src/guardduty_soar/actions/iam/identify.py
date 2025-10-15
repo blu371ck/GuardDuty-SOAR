@@ -19,6 +19,9 @@ class IdentifyIamPrincipalAction(BaseAction):
         try:
             # The key details are in the Resource.AccessKeyDetails section
             principal_details = event["Resource"]["AccessKeyDetails"]
+            logger.warning(
+                f"ACTION: Attempting to identify principal: {principal_details}."
+            )
             user_type = principal_details.get("UserType")
             user_name = principal_details.get("UserName")
             account_id = event.get("AccountId")
