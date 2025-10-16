@@ -1,6 +1,8 @@
 import copy
 import json
 import logging
+import random
+import string
 import time
 from typing import Dict, List
 from unittest.mock import MagicMock
@@ -12,6 +14,11 @@ from botocore.exceptions import ClientError
 from guardduty_soar.config import AppConfig, get_config
 
 logger = logging.getLogger(__name__)
+
+
+def generate_random_suffix(length=8):
+    """Generates a random lowercase alphanumeric string."""
+    return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 
 @pytest.fixture
@@ -133,26 +140,88 @@ def enriched_ec2_finding(guardduty_finding_detail):
 
 
 @pytest.fixture
+def s3_finding_multiple_buckets(s3_finding_detail):
+    """
+    Creates a copy of the S3 finding with two buckets. To test
+    the scenario where a report has multiple buckets.
+    """
+    finding = copy.deepcopy(s3_finding_detail)
+    finding["Resource"]["S3BucketDetails"].append(
+        {"Arn": "arn:aws:s3:::example-bucket2", "Name": "example-bucket2"}
+    )
+    return finding
+
+
+@pytest.fixture
 def s3_finding_detail():
-    """A mock GuardDuty finding for an S3 resource."""
+    """Provides a base, complete GuardDuty S3 finding for reuse."""
     return {
-        "Id": "s3-finding-id",
-        "Type": "Policy:S3/BucketPublicAccessGranted",
-        "Severity": 7,
-        "Title": "S3 bucket is publicly accessible.",
-        "Description": "An S3 bucket has been found to be publicly accessible.",
-        "AccountId": "123456789012",
+        "SchemaVersion": "2.0",
+        "AccountId": "1234567891234",
         "Region": "us-east-1",
+        "Partition": "aws",
+        "Id": "cdf9ae8187744b15aeaf17c7ef2f8a52",
+        "Arn": "arn:aws:guardduty:us-east-1:1234567891234:detector/12cc51e1c99e833adf5924c71ac591b2/finding/cdf9ae8187744b15aeaf17c7ef2f8a52",
+        "Type": "Exfiltration:S3/AnomalousBehavior",
         "Resource": {
             "ResourceType": "S3Bucket",
+            "InstanceDetails": {
+                "IamInstanceProfile": {"Arn": "arn:aws:iam::.../mock-profile"},
+                "InstanceId": "i-99999999",
+                "NetworkInterfaces": [{"SubnetId": "subnet-99999999"}],
+            },
             "S3BucketDetails": [
                 {
-                    "Arn": "arn:aws:s3:::example-bucket",
-                    "Name": "example-bucket",
-                    "Type": "S3",
-                }
+                    "Arn": "arn:aws:s3:::example-bucket1",
+                    "CreatedAt": "2017-12-18T15:58:11.551Z",
+                    "DefaultServerSideEncryption": {
+                        "EncryptionType": "SSEAlgorithm",
+                        "KmsMasterKeyArn": "arn:aws:kms:us-west-2:123456789012:key/abcd1234-5678-90ab-cdef-1234567890a1",
+                    },
+                    "Name": "example-bucket1",
+                    "Owner": {
+                        "Id": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456781"
+                    },
+                    "PublicAccess": {
+                        "EffectivePermission": "NOT_PUBLIC",
+                        "PermissionConfiguration": {
+                            "AccountLevelPermissions": {
+                                "BlockPublicAccess": {
+                                    "BlockPublicAcls": "false",
+                                    "BlockPublicPolicy": "false",
+                                    "IgnorePublicAcls": "false",
+                                    "RestrictPublicBuckets": "false",
+                                }
+                            },
+                            "BucketLevelPermissions": {
+                                "AccessControlList": {
+                                    "AllowsPublicReadAccess": "false",
+                                    "AllowsPublicWriteAccess": "false",
+                                },
+                                "BlockPublicAccess": {
+                                    "BlockPublicAcls": "false",
+                                    "BlockPublicPolicy": "false",
+                                    "IgnorePublicAcls": "false",
+                                    "RestrictPublicBuckets": "false",
+                                },
+                                "BucketPolicy": {
+                                    "AllowsPublicReadAccess": "false",
+                                    "AllowsPublicWriteAccess": "false",
+                                },
+                            },
+                        },
+                    },
+                    "Tags": [],
+                    "Type": "Destination",
+                },
             ],
         },
+        "Service": {},
+        "Severity": 8.0,
+        "CreatedAt": "2025-08-22T01:40:10.005Z",
+        "UpdatedAt": "2025-10-01T14:38:47.919Z",
+        "Title": "EAn IAM entity invoked an S3 API in an unusual way.",
+        "Description": "An IAM entity in your AWS environment is making API calls that involve an S3 bucket and that differ from that entity's established baseline. The API call used in this activity is associated with the exfiltration stage of an attack, wherein and attacker is attempting to collect data. This activity is suspicious because the way the IAM entity invoked the API was unusual. For example, this IAM entity had no prior history of invoking this type of API, or the API was invoked from an unusual location.",
     }
 
 
@@ -284,6 +353,42 @@ def temporary_ec2_instance(temporary_vpc):
                 ec2_client.delete_security_group(GroupId=resources["quarantine_sg_id"])
             except ClientError as e:
                 logger.info(f"Non-critical error deleting quarantine SG: {e}")
+
+
+@pytest.fixture(scope="function")
+def temporary_s3_bucket():
+    """
+    Generates a temporary S3 bucket with a unique suffix for integration testing. To
+    reduce the probability of name collision.
+    """
+    s3_client = boto3.client("s3")
+    bucket_name = None
+
+    try:
+        suffix = generate_random_suffix()
+        bucket_name = f"guardduty-soar-test-bucket-{suffix}"
+        logger.info(f"Setting up temporary S3 bucket: {bucket_name}.")
+
+        # NOTE: If you are working outside of us-east-1, you must provide a
+        # LocationConstraint. We assume for testing end-users will use us-east-1.
+        s3_client.create_bucket(Bucket=bucket_name)
+
+        # Yield the bucket name for testing
+        yield bucket_name
+
+    finally:
+        # Cleanup the s3 bucket
+        if bucket_name:
+            logger.info(f"Tearing down temporary S3 bucket: {bucket_name}.")
+            try:
+                # Currently we assume the new test bucket is empty, as its short
+                # lived. We may have to add more robust cleanup here if it turns
+                # into issues downstream.
+                s3_client.delete_bucket(Bucket=bucket_name)
+            except ClientError as e:
+                logger.error(
+                    f"Failed to cleanup S3 bucket: {bucket_name}. Manual cleanup required."
+                )
 
 
 @pytest.fixture(scope="function")
