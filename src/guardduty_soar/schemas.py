@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,33 @@ class EC2InstanceDetails(BaseResourceDetails):
         return "partials/_ec2instancedetails.md.j2"
 
 
+class S3EnrichmentData(BaseModel):
+    """
+    A data model containing enriched details for an S3 bucket, gathered
+    from various Boto3 API calls.
+    """
+
+    name: str
+    public_access_block: Optional[Dict[str, Any]] = None
+    policy: Optional[Dict[str, Any]] = None
+    encryption: Optional[Dict[str, Any]] = None
+    versioning: Optional[str] = None
+    logging: Optional[Dict[str, Any]] = None
+    tags: Optional[List[Dict[str, str]]] = None
+
+    @field_validator("policy", mode="before")
+    def parse_policy(cls, v):
+        """AWS returns the policy as a JSON string, so we parse it."""
+        if isinstance(v, str):
+            import json
+
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return {"Error": "Failed to decode policy JSON"}
+        return v
+
+
 class S3BucketDetails(BaseResourceDetails):
     """
     A data model for S3 bucket details.
@@ -115,6 +142,10 @@ class S3BucketDetails(BaseResourceDetails):
     resource_type: str = Field(..., alias="ResourceType")
     bucket_name: Optional[str] = Field(None, alias="Name")
     bucket_arn: Optional[str] = Field(None, alias="Arn")
+
+    @property
+    def template_name(self) -> str:
+        return "partials/_s3bucketdetails.md.j2"
 
 
 class EKSClusterDetails(BaseResourceDetails):

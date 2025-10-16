@@ -1,0 +1,60 @@
+# Project Meta Information
+site_name: GuardDuty-SOAR Documentation
+site_author: Andrew McKenzie
+site_url: https://docs.guardduty-soar.com
+site_description: >-
+  Welcome to the documentation for GuardDuty-SOAR.
+
+# Theme configurations
+theme:
+  name: material
+  logo: assets/logo_gds.png
+  favicon: assets/favicon.ico
+  features:
+    - navigation.tabs
+    - navigation.instant
+    - toc.integrate
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    - scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+# Markdown extensions (alert, warning, note boxes)
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
+# Navigation structure
+nav:
+  - 'Home': 'index.md'
+  - 'Getting Started':
+    - 'Preparing GuardDuty-SOAR for Deployment': 'preparing_deployment.md'
+    - 'Configurations': 'prod_configurations.md'
+    - 'IAM Permissions': 'prod_permissions.md'
+    - 'Notifications': 'notifications.md'
+  - 'Testing and Development':
+    - 'Preparing GuardDuty-SOAR for Testing': 'preparing_testing.md'
+    - 'Testing Configuration': 'test_configurations.md'
+    - 'Pull Request Checklist': 'pull_request_checklist.md'
+  - 'Concepts':
+    - 'Configurations': 'configurations.md'
+    - 'Actions': 'actions.md'
+    - 'Playbooks': 'playbooks.md'
+  - 'Reference':
+    - 'Playbooks':
+      - 'EC2': 'ec2_playbooks.md'
+      - 'IAM': 'iam_playbooks.md'
+    - 'Actions':
+      - 'EC2': 'ec2_actions.md'
+      - 'IAM': 'iam_actions.md'

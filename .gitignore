@@ -12,14 +12,7 @@ wheels/
 .mypy_cache
 .pytest_cache
 
-# Local testing configuration file - DO NOT COMMIT
-gd.test.cfg
-
-# File I am using for permissions used as a general place-holder document
-general.txt
-
 # Terraform Files
-
 # Ignore local Terraform state and backups
 # These files can contain sensitive information.
 *.tfstate
@@ -43,4 +36,5 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-about_tagging.txt
+# MkDOcs
+site

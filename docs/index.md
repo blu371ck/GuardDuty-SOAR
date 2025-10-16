@@ -12,6 +12,6 @@ This project is not just a script; it's a production-ready framework designed fo
 
 * **Serverless and Cost-Effective:** Built entirely on AWS Lambda, ensuring you only pay for what you use with zero idle costs.
 * **Dynamic Playbook Engine:** A powerful, decorator-based registry allows you to add new remediation playbooks for any GuardDuty finding type without modifying the core engine.
-* **Reusable Action Library:** Playbooks are composed of small, single-purpose **Actions** (e.g., <mark style="color:$primary;">`IsolateInstance`</mark>, <mark style="color:$primary;">`TagResource`</mark>) promoting DRY principles.
+* **Reusable Action Library:** Playbooks are composed of small, single-purpose **Actions** (e.g., `IsolateInstance`, `TagResource`) promoting DRY principles.
 * **Layered & Decoupled Architecture:** A clean, multi-layered inheritance pattern separates orchestration (Playbooks) from implementation (Actions).
-* **Comprehensive Testing Suite:** Includes a multi-layered testing strategy with isolated unit tests (<mark style="color:$primary;">`botocore.stub`</mark>), integration tests, end-to-end testing as well as validation-scenarios for live testing.
+* **Comprehensive Testing Suite:** Includes a multi-layered testing strategy with isolated unit tests (`botocore.stub`), integration tests, end-to-end testing as well as validation-scenarios for live testing.

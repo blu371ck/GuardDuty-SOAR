@@ -1,16 +1,16 @@
 # 🎛️ Testing Configurations
 
-Testing configurations are managed via a <mark style="color:$primary;">`.env`</mark> file in the project root. This allows you to override the default production settings from <mark style="color:$primary;">`gd.cfg`</mark> for your local development environment. This is primarily used to direct AWS API calls to a dedicated test account, enable verbose logging for troubleshooting, and modify playbook behaviors during development.
+Testing configurations are managed via a `.env` file in the project root. This allows you to override the default production settings from `gd.cfg` for your local development environment. This is primarily used to direct AWS API calls to a dedicated test account, enable verbose logging for troubleshooting, and modify playbook behaviors during development.
 
 #### Environment Variable Naming Convention
 
-All parameters available in the <mark style="color:$primary;">`gd.cfg`</mark> file can be set as environment variables. The naming convention is to take the parameter name, prefix it with <mark style="color:$primary;">`GD_`</mark>, and convert the entire string to uppercase.
+All parameters available in the `gd.cfg` file can be set as environment variables. The naming convention is to take the parameter name, prefix it with `GD_`, and convert the entire string to uppercase.
 
 For example:
 
-* <mark style="color:$primary;">`gd.cfg`</mark>: <mark style="color:$primary;">`[General]`</mark> -> <mark style="color:$primary;">`log_level`</mark> becomes <mark style="color:$primary;">`.env`</mark>: <mark style="color:$primary;">`GD_LOG_LEVEL`</mark>
+* `gd.cfg`: `[General]` -> `log_level` becomes `.env`: `GD_LOG_LEVEL`
 
-The following is a complete list of the available environment variables and their corresponding <mark style="color:$primary;">`gd.cfg`</mark> parameters.
+The following is a complete list of the available environment variables and their corresponding `gd.cfg` parameters.
 
 ### General
 

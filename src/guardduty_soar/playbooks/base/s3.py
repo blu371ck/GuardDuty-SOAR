@@ -1,3 +1,4 @@
+from guardduty_soar.actions.s3.enrich import EnrichS3BucketAction
 from guardduty_soar.actions.s3.tag import TagS3BucketAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.playbooks.base.iam import IamBasePlaybook
@@ -15,10 +16,7 @@ class S3BasePlaybook(IamBasePlaybook):
     """
 
     def __init__(self, config: AppConfig):
-        # First, initialize the parent class (IamBasePlaybook) to set up all IAM actions
         super().__init__(config)
 
-        # Now, initialize all S3-specific actions
         self.tag_s3_bucket = TagS3BucketAction(self.session, self.config)
-        # self.enrich_s3_finding = EnrichS3FindingAction(session, config)
-        # self.remediate_public_access = RemediateS3PublicAccessAction(session, config)
+        self.get_s3_enrichment = EnrichS3BucketAction(self.session, self.config)
