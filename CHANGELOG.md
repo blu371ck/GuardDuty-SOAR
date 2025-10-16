@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+## [0.3.0] - 2025-10-16
+
+### Added
 - Creation of S3 data models and templates for notifications.
 - Creation of EnrichS3Action.
   - Creation of unit tests for EnrichS3Action.
