@@ -1,6 +1,3 @@
----
-icon: arrow-progress
----
 
 # Pull Request Checklist
 
@@ -14,31 +11,31 @@ All commands should be run from the root of the project directory.
 
 Before your pull request is ready for review, please complete the following four steps.
 
-**1. Sort Imports with&#x20;**<mark style="color:$primary;">**`isort`**</mark>
+**1. Sort Imports with&#x20;****`isort`**
 
-Ensure all Python imports are sorted correctly and consistently across the codebase. Run <mark style="color:$primary;">`isort`</mark> against both the source and test directories.
+Ensure all Python imports are sorted correctly and consistently across the codebase. Run `isort` against both the source and test directories.
 
 ```bash
 uv run isort src tests
 ```
 
-**2. Format Code with&#x20;**<mark style="color:$primary;">**`black`**</mark>
+**2. Format Code with&#x20;****`black`**
 
-Format the entire codebase according to the <mark style="color:$primary;">`black`</mark> code style. This ensures a uniform and readable style across the project.
+Format the entire codebase according to the `black` code style. This ensures a uniform and readable style across the project.
 
 ```bash
 uv run black src tests
 ```
 
-**3. Perform Static Type Checking with&#x20;**<mark style="color:$primary;">**`mypy`**</mark>
+**3. Perform Static Type Checking with&#x20;****`mypy`**
 
-Run static type analysis on the application's source code to catch potential type-related errors before runtime. The <mark style="color:$primary;">`mypy`</mark> check must pass without any errors.
+Run static type analysis on the application's source code to catch potential type-related errors before runtime. The `mypy` check must pass without any errors.
 
 ```
 uv run mypy src
 ```
 
-**4. Execute the Full Test Suite with&#x20;**<mark style="color:$primary;">**`pytest`**</mark>
+**4. Execute the Full Test Suite with&#x20;****`pytest`**
 
 Run the complete test suite to confirm that your changes have not introduced any regressions and that all functionality works as expected. All tests (Unit, Integration, and E2E) must pass.
 

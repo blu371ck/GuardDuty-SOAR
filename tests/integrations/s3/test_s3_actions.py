@@ -5,6 +5,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 
+from guardduty_soar.actions.s3.enrich import EnrichS3BucketAction
 from guardduty_soar.actions.s3.tag import TagS3BucketAction
 
 pytestmark = pytest.mark.integration
@@ -76,3 +77,32 @@ def test_tag_s3_multiple_bucket_action_integration(
     }
 
     assert "SOAR-Status" in tags and tags["SOAR-Status"] == "Remediation-In-Progress"
+
+
+def test_enrich_s3_action_integration(
+    temporary_s3_bucket, s3_finding_detail, real_app_config
+):
+    """
+    Tests the EnrichS3BucketAction against a live S3 bucket with a known configuration.
+    """
+    session = boto3.Session()
+    s3_client = session.client("s3")
+    bucket_name = temporary_s3_bucket
+    action = EnrichS3BucketAction(session, real_app_config)
+
+    # Apply a known configuration to the live bucket for testing.
+    s3_client.put_bucket_versioning(
+        Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
+    )
+    time.sleep(2)  # Allow configuration to propagate.
+
+    s3_finding_detail["Resource"]["S3BucketDetails"][0]["Name"] = bucket_name
+    result = action.execute(event=s3_finding_detail)
+
+    assert result["status"] == "success"
+    assert len(result["details"]) == 1
+
+    enriched_data = result["details"][0]
+    assert enriched_data["name"] == bucket_name
+    assert enriched_data["versioning"] == "Enabled"
+    assert "policy" not in enriched_data

@@ -38,6 +38,7 @@ def test_tag_single_bucket_success(s3_finding_detail, mock_app_config):
         result = action.execute(s3_finding_detail, playbook_name="TestPlaybook")
 
         assert result["status"] == "success"
+        assert "Successfully tagged 1 bucket(s): " in result["details"]
     stubber.assert_no_pending_responses()
 
 
@@ -81,9 +82,5 @@ def test_tag_multiple_bucket_success(s3_finding_multiple_buckets, mock_app_confi
         )
 
         assert result["status"] == "success"
-
-        # We pass back the objects from GuardDuty because they have some good metadata
-        # so we just verify the items were added to end response details.
-        assert bucket1_name in result["details"][0]["Name"]
-        assert bucket2_name in result["details"][1]["Name"]
+        assert "Successfully tagged 2 bucket(s): " in result["details"]
         stubber.assert_no_pending_responses()

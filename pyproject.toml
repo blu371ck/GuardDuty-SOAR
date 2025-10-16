@@ -29,7 +29,24 @@ dev = [
     "pytest",
     "pytest-mock",
     "types-markdown",
-    "pytest-dotenv"
+    "pytest-dotenv",
+    "ghp-import",
+    "mergedeep",
+    "mkdocs",
+    "mkdocs-get-deps",
+    "pyyaml",
+    "pyyaml-env-tag",
+    "watchdog",
+    "babel",
+    "backrefs",
+    "certifi",
+    "charset-normalizer",
+    "idna",
+    "mkdocs-material",
+    "mkdocs-material-extensions",
+    "paginate",
+    "pymdown-extensions",
+    "requests"
 ]
 
 [tool.setuptools.packages.find]

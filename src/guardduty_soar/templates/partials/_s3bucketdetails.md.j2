@@ -1,0 +1,33 @@
+- **Resource Type:** `{{ resource.resource_type }}`
+- **Bucket Name:** `{{ resource.bucket_name }}`
+- **Bucket ARN:** `{{ resource.bucket_arn }}`
+
+{%- if enriched_data and enriched_data.tags %}
+- **Tags:**
+    ```
+    {% for tag in enriched_data.tags -%}
+    - {{ tag.Key }}: {{ tag.Value }}
+    {% endfor %}
+    ```
+{%- endif %}
+
+{%- if enriched_data %}
+#### **Enriched Details**
+- **Versioning:** `{{ enriched_data.versioning | default('Not Configured') }}`
+{%- if enriched_data.public_access_block %}
+- **Public Access Block:**
+    ```
+    {% for key, value in enriched_data.public_access_block.items() -%}
+    - {{ key }}: {{ value }}
+    {% endfor %}
+    ```
+{%- endif %}
+{%- if enriched_data.encryption %}
+- **Server-Side Encryption:**
+    ```
+    {% for rule in enriched_data.encryption.Rules -%}
+    - Algorithm: {{ rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm }}
+    {% endfor %}
+    ```
+{%- endif %}
+{%- endif %}

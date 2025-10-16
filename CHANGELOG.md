@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Creation of S3 data models and templates for notifications.
+- Creation of EnrichS3Action.
+  - Creation of unit tests for EnrichS3Action.
+  - Creation of integration tests for EnrichS3Action.
+- Added MkDocs to development packages.
+  - Added documents from other repo to this repo, to make self-containing.
+- Modified TagS3BucketAction to handle the updated data models and templates.
 
 
 ## [0.2.0] - 2025-10-16

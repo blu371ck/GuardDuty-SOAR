@@ -64,6 +64,17 @@ class EnrichedEC2Finding(TypedDict):
     instance_metadata: Dict[str, Any]
 
 
+class EnrichedS3Finding(TypedDict):
+    """
+    This model specifically models the enriched data structure of S3-related
+    playbook actions. It holds all the extra information gathered about the S3
+    bucket(s) in question.
+    """
+
+    guardduty_finding: GuardDutyEvent
+    bucket_details: List[Dict[str, Any]]
+
+
 class ActionResponse(TypedDict):
     """
     This model is utilized for type checking the responses of Actions. Every
