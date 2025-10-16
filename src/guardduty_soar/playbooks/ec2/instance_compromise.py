@@ -54,8 +54,13 @@ logger = logging.getLogger(__name__)
 )
 class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
     """
-    This playbook class handles multiple finding types related to a
-    compromised EC2 instance.
+    This playbook class handles multiple finding types related to a compromised EC2
+    instance. Since the `_run_compromise_workflow` method is inherited, it's used by
+    this class during its run method.
+
+    :param event: the GuardDutyEvent JSON object.
+    :return: A PlaybookResult object consisting of steps taken and details from those
+        steps.
     """
 
     def run(self, event: GuardDutyEvent) -> PlaybookResult:

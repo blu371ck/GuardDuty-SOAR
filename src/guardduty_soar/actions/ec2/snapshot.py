@@ -13,8 +13,13 @@ logger = logging.getLogger(__name__)
 
 class CreateSnapshotAction(BaseAction):
     """
-    An action to create EBS snapshots of all volumes attached to a
-    compromised EC2 instance for forensic analysis.
+    An action to create EBS snapshots of all volumes attached to a potentially
+    compromised EC2 instance for forensic analysis. All the snapshots are also
+    created with GuardDuty-SOAR specific tags, including the event ID. This action
+    also handles the possibility of now attached volumes.
+
+    :param session: a Boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
@@ -23,9 +28,14 @@ class CreateSnapshotAction(BaseAction):
 
     def _get_volume_ids(self, instance_id: str) -> List[str]:
         """
-        Describes the EC2 instance to find all attached EBS volume
-        IDs. Returns an empty list if none are found or if the instance doesn't
-        exist.
+        Describes the EC2 instance to find all attached EBS volume IDs. It will
+        return an list if none are found or if the instance doesn't exist. (Could
+        happen if the instance is terminated during remediation actions.)
+
+        :param instance_id: the string ID of the EC2 instance.
+        :return: A list of strings representing the EBS volume IDs.
+
+        :meta private:
         """
         try:
             response = self.ec2_client.describe_instances(InstanceIds=[instance_id])

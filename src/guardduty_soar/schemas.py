@@ -6,19 +6,34 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
+# Unlike models.py, we utilize Pydantic here to force a more strictly type checking on
+# the following models. These models are important for how we parse the incoming GuardDuty
+# event JSON.
 class IamPolicy(BaseModel):
+    """
+    This model is strictly for modeling the IAM policy
+    responses from some Boto3 API calls for IAM
+    """
+
     PolicyName: str
     PolicyArn: str
 
 
 class BaseResourceDetails(BaseModel):
-    """A base model for resource details, providing a default template."""
+    """
+    A base model for resource details, providing a default template.
+    """
 
     resource_type: str = Field("Unknown", alias="ResourceType")
 
     @property
     def template_name(self) -> str:
-        # This default behavior is the source of the error for AccessKey.
+        """
+        We utilize Jinja2 for templating our notification system. This
+        inherited property allows us to define unique templates for
+        each finding type, as each finding type will involve different levels
+        of needed and useful information.
+        """
         # We will override it in the AccessKeyDetails model.
         return f"partials/_{self.__class__.__name__.lower()}.md.j2"
 
@@ -67,7 +82,6 @@ class AccessKeyDetails(BaseResourceDetails):
     def template_name(self) -> str:
         """
         Overrides the base behavior to point to the correct IAM principal template.
-        THIS IS THE KEY FIX.
         """
         if self.principal_type == "User":
             return "partials/_iamuserdetails.md.j2"
@@ -75,7 +89,9 @@ class AccessKeyDetails(BaseResourceDetails):
 
 
 class EC2InstanceDetails(BaseResourceDetails):
-    """A data model for EC2 instance specific details."""
+    """
+    A data model for EC2 instance specific details.
+    """
 
     resource_type: str = Field(..., alias="ResourceType")
     instance_id: str = Field(..., alias="InstanceId")
@@ -91,20 +107,31 @@ class EC2InstanceDetails(BaseResourceDetails):
         return "partials/_ec2instancedetails.md.j2"
 
 
-# --- Other resource models can remain as they were ---
 class S3BucketDetails(BaseResourceDetails):
+    """
+    A data model for S3 bucket details.
+    """
+
     resource_type: str = Field(..., alias="ResourceType")
     bucket_name: Optional[str] = Field(None, alias="Name")
     bucket_arn: Optional[str] = Field(None, alias="Arn")
 
 
 class EKSClusterDetails(BaseResourceDetails):
+    """
+    A data model for EKS cluster details.
+    """
+
     resource_type: str = Field(..., alias="ResourceType")
     cluster_name: Optional[str] = Field(None, alias="Name")
     cluster_arn: Optional[str] = Field(None, alias="Arn")
 
 
 class RDSInstanceDetails(BaseResourceDetails):
+    """
+    A data model for RDS instance details.
+    """
+
     resource_type: str = Field(..., alias="ResourceType")
     db_instance_identifier: Optional[str] = Field(None, alias="DbInstanceIdentifier")
     db_cluster_identifier: Optional[str] = Field(None, alias="DbClusterIdentifier")
@@ -112,6 +139,10 @@ class RDSInstanceDetails(BaseResourceDetails):
 
 
 class LambdaDetails(BaseResourceDetails):
+    """
+    A data model for Lambda details.
+    """
+
     resource_type: str = Field(..., alias="ResourceType")
     function_name: Optional[str] = Field(None, alias="FunctionName")
     function_arn: Optional[str] = Field(None, alias="FunctionArn")
@@ -132,7 +163,14 @@ def map_resource_to_model(
     resource_data: dict, instance_metadata: Optional[dict] = None
 ) -> BaseResourceDetails:
     """
-    Inspects the GuardDuty finding and returns the appropriate Pydantic model.
+    Inspects the GuardDuty finding and returns the appropriate Pydantic model. If
+    the appropriate Pydantic model cannot be parsed correctly, a base resource
+    fallback is used.
+
+    :param resource_data: a dictionary object that later becomes the GuardDutyEvent object.
+    :param instance_metadata: an optional dictionary of an ec2 instances metadata if the
+        playbook is ran on an EC2 instance.
+    :return: An object modeling the BaseResourceDetails object.
     """
     resource_type = resource_data.get("ResourceType", "Unknown")
     if result := RESOURCE_MODEL_MAP.get(resource_type):

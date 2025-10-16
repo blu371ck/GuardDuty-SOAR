@@ -12,9 +12,13 @@ logger = logging.getLogger(__name__)
 
 class QuarantineInstanceProfileAction(BaseAction):
     """
-    An action to quarantine an EC2 instance's IAM role by attaching a
-    'deny-all' policy to it. This action correctly looks up the role
-    associated with the instance profile.
+    An action to quarantine an EC2 instance's IAM role by attaching the AWS
+    managed policy `AWSDenyAll` to it. This action correctly looks up the role
+    associated with the instance profile. Then attaches the deny-all policy to
+    it.
+
+    :param session: a Boto3 Session object to create clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

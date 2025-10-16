@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 class Engine:
     """
-    Class that handles parsing and direction of GuardDuty event
-    findings.
+    This class drives the entire application. From handling
+    event parsing to playbook lookup and invocation.
 
-    Parameters:
-        event: Dict of 'strictly' GuardDuty's event finding.
-    Returns:
-        None
+    :param event: the parsed dictionary object from a Lambda
+        event json invocation.
+    :param config: the AppConfig object parsed at runtime from
+        `gd.cfg` or environment variables.
     """
 
     def __init__(self, event: GuardDutyEvent, config: AppConfig) -> None:
@@ -52,7 +52,7 @@ class Engine:
     def handle_finding(self) -> None:
         """
         Handles the lookup and use of the appropriate playbook for the
-        finding type.
+        GuardDuty finding type.
         """
         playbook = None
         playbook_name = "UnknownPlaybook"

@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 
 import boto3
 from botocore.exceptions import ClientError
@@ -18,25 +17,11 @@ class TagInstanceAction(BaseAction):
     instance.
     """
 
-    def __init__(self, boto3_session: boto3.Session, config: AppConfig):
-        super().__init__(boto3_session, config)
+    def __init__(self, session: boto3.Session, config: AppConfig):
+        super().__init__(session, config)
         # We only need to create the specific boto3 client once, for each
         # action. Creating a disposable client.
         self.ec2_client = self.session.client("ec2")
-
-    def _calculate_severity(self, severity: float) -> str:
-        """
-        Simple function to take the numerical severity and return
-        a more human-friendly label. Used in tagging.
-        """
-        if 9.0 <= severity <= 10.0:
-            return "CRITICAL"
-        elif 7.0 <= severity <= 8.9:
-            return "HIGH"
-        elif 4.0 <= severity <= 6.9:
-            return "MEDIUM"
-        else:
-            return "LOW"
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
@@ -45,21 +30,7 @@ class TagInstanceAction(BaseAction):
         logger.warning(f"ACTION: Tagging instance: {instance_id}")
         try:
             self.ec2_client.create_tags(
-                Resources=[instance_id],
-                Tags=[
-                    {"Key": "GUARDDUTY-SOAR-ID", "Value": event["Id"]},
-                    {"Key": "SOAR-Status", "Value": "Remediation-In-Progress"},
-                    {
-                        "Key": "SOAR-Action-Time-UTC",
-                        "Value": datetime.now(timezone.utc).isoformat(),
-                    },
-                    {"Key": "SOAR-Finding-Type", "Value": event["Type"]},
-                    {
-                        "Key": "SOAR-Finding-Severity",
-                        "Value": self._calculate_severity(float(event["Severity"])),
-                    },
-                    {"Key": "SOAR-Playbook", "Value": playbook_name},
-                ],
+                Resources=[instance_id], Tags=self._tags_to_apply(event, playbook_name)
             )
             details = f"Successfully added SOAR tags to instance: {instance_id}."
             logger.info(details)

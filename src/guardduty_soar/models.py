@@ -3,7 +3,8 @@ from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 class Response(TypedDict):
     """
-    Models the Lambda functions response type.
+    A model of the Lambda functions response for
+    better control.
     """
 
     statusCode: int
@@ -12,7 +13,8 @@ class Response(TypedDict):
 
 class GuardDutyEvent(TypedDict):
     """
-    Models GuardDuty finding event.
+    A model of the GuardDuty event that is nested within
+    the LambdaEvent when the Lambda function is invoked.
     """
 
     AccountId: str
@@ -31,6 +33,8 @@ class GuardDutyEvent(TypedDict):
     UpdatedAt: str
 
 
+# We declare this model differently because of the improper syntax errors
+# that would be generated for `detail-type`.
 LambdaEvent = TypedDict(
     "LambdaEvent",
     {
@@ -49,8 +53,11 @@ LambdaEvent = TypedDict(
 
 class EnrichedEC2Finding(TypedDict):
     """
-    A data structure that combines the original GuardDuty finding with
-    rich metadata from the describe_instances call.
+    This model specifically models the enriched data structure of the
+    playbooks actions. It holds all the extra information we go after
+    during a playbook execution, to ensure end-user analyst do not need
+    to perform additional actions on their part to find information about
+    the objects in question.
     """
 
     guardduty_finding: GuardDutyEvent
@@ -59,39 +66,14 @@ class EnrichedEC2Finding(TypedDict):
 
 class ActionResponse(TypedDict):
     """
-    A standardized dictionary structure for the return value of all Action
-    classes.
+    This model is utilized for type checking the responses of Actions. Every
+    action needs to return a status and some details. The details can be
+    customized based on the information gathered, however the status has to be
+    a literal value that we can check for, or anticipate.
     """
 
     status: Literal["success", "error", "skipped"]
     details: Any
-
-
-class MalwareScanDetail(TypedDict):
-    """
-    Models the 'detail' object of a GuardDuty Malware Scan status change event.
-    """
-
-    scanId: str
-    scanStatus: Literal["COMPLETED", "FAILED"]
-    resourceArn: str
-    threats: List[Dict[str, Any]]
-
-
-class MalwareScanEvent(TypedDict):
-    """
-    The top-level event for a GuardDuty Malware Scan status change.
-    """
-
-    version: str
-    id: str
-    detail_type: Literal["GuardDuty Malware Protection Scan status change"]
-    source: Literal["aws.guardduty"]
-    account: str
-    time: str
-    region: str
-    resources: List[str]
-    detail: MalwareScanDetail
 
 
 class ActionResult(ActionResponse):
@@ -106,7 +88,9 @@ class ActionResult(ActionResponse):
 class PlaybookResult(TypedDict):
     """
     Models the standardized return type for all playbook 'run' methods,
-    replacing the more complex tuple.
+    replacing the more complex tuple. Every playbook has an inherited run
+    method that invokes the pre-determined Actions (as steps). This model
+    is designed to make that response uniform and predictable.
     """
 
     action_results: List[ActionResult]

@@ -7,7 +7,18 @@ from typing import List, Optional
 
 @dataclass(frozen=True)
 class AppConfig:
-    """A frozen dataclass that holds all application configuration."""
+    """
+    A frozen dataclass that holds all application configurations.
+
+    An application configuration is the live configurations passed
+    via the environment or the `gd.cfg` file. These configurations
+    alter the behavior of GuardDuty-SOAR and need to follow a
+    strict typing scheme.
+
+    We freeze the dataclass for several reasons, but the primary
+    reason being that it makes the object hashable. Meaning it's
+    fields can be used keys within a dictionary.
+    """
 
     log_level: str
     boto_log_level: str
@@ -28,7 +39,14 @@ class AppConfig:
 @lru_cache(maxsize=1)
 def get_config() -> AppConfig:
     """
-    Parses config files and returns a cached, singleton instance of the AppConfig.
+    Parses the environment variables first, and if not set, then parses
+    the `gd.cfg` file. This means that any configurations passed
+    via the environment will take precedence over the items in `gd.cfg`.
+    This is intended by design, to ensure when testing locally `.env` is
+    ingested by UV and used as environment variables. This ensures our
+    testing configuration is always utilized locally when we need them.
+
+    :return: an AppConfig object with the specific configurations set.
     """
     CLOUDTRAIL_MAX = 50
     CLOUDTRAIL_MIN = 1

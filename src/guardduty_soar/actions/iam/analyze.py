@@ -1,7 +1,10 @@
 import logging
 from typing import Any, Dict, List
 
+import boto3
+
 from guardduty_soar.actions.base import BaseAction
+from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
@@ -9,20 +12,44 @@ logger = logging.getLogger(__name__)
 
 class AnalyzePermissionsAction(BaseAction):
     """
-    An action to analyze IAM policies for overly permissive rules.
+    An action to analyze IAM policies for overly permissive rules. This
+    action is optional, but can provide some quick insights for analysts.
+    It is controlled by the configuration `analyze_iam_permissions`.
+
+    :param session: a Boto3 Session object to create clients with.
+    :param config: the Applications configurations.
     """
+
+    def __init__(self, session: boto3.Session, config: AppConfig):
+        super().__init__(session, config)
 
     def _normalize_statements(
         self, policy_document: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Handles cases where 'Statement' is a single dict instead of a list."""
+        """
+        Normalizes instances of IAM policy "Statements" where the object is
+        a single dictionary, instead of a list of dictionaries.
+
+        :param policy_document: the IAM policy documents contents. (The IAM policy)
+        :return: A list of IAM policy documents.
+
+        :meta private:
+        """
         statements = policy_document.get("Statement", [])
         if isinstance(statements, dict):
             return [statements]
         return statements
 
     def _check_statement(self, statement: Dict[str, Any]) -> List[str]:
-        """Checks a single policy statement for risks."""
+        """
+        Checks a single policy statement for risky permissions. The findings
+        are then passed along in the notification to the end-users.
+
+        :param statement: a dictionary object representing a specific IAM policy statement.
+        :return: a list of values depending on if any risky values are found.
+
+        :meta private:
+        """
         risks: List[str] = []
 
         # Deny policies are not security risks.
@@ -53,9 +80,6 @@ class AnalyzePermissionsAction(BaseAction):
         return risks
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
-        """
-        Analyzes attached and inline policies from a principal's details.
-        """
 
         if not self.config.analyze_iam_permissions:
             logger.warning("IAM analysis is disabled in the configuration.")

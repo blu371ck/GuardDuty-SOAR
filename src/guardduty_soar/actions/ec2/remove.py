@@ -13,8 +13,12 @@ logger = logging.getLogger(__name__)
 
 class RemovePublicAccessAction(BaseAction):
     """
-    An action to review the security groups attached to an instance and
-    remove any inbound rules that allow unrestricted public access.
+    An action to review the security groups attached to an instance and remove any
+    inbound rules that allow unrestricted public access. This action is optional
+    and can be controlled by the applications configurations `allow_revoke_public_access`.
+
+    :param session: a Boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

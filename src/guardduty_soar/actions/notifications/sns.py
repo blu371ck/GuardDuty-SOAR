@@ -12,7 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class SendSNSNotificationAction(BaseNotificationAction):
-    """An action to send a formatted JSON notification via AWS SNS."""
+    """
+    An action to send formatted JSON notifications via AWS SNS. This notifications
+    are more machine-friendly, and can be linked to other services and functionality
+    like SIEM solutions, Jira ticketing, etc.
+
+    :param session: a Boto3 Session object to create clients with.
+    :param config: the Applications configurations.
+
+    """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
         super().__init__(session, config)

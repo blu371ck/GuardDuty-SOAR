@@ -12,8 +12,11 @@ from guardduty_soar.models import LambdaEvent, Response
 
 def load_playbooks():
     """
-    Dynamically finds and imports all Python playbook files within the 'playbooks'
-    directory and its subdirectories.
+    This function dynamically finds and imports the various Playbook files. Currently
+    these playbooks are all centrally located in the `playbooks` directory, however,
+    we will eventually be adding the ability for end-users to provide custom
+    playbooks and actions, which will require this function to parse a second
+    location.
     """
     # Start the search from the 'guardduty_soar' package directory
     package_dir = os.path.dirname(__file__)
@@ -55,7 +58,11 @@ def load_playbooks():
 
 def setup_logging():
     """
-    Configures the root logger based on the level specified in gd.cfg.
+    This function sets up the entire logging infrastructure of the application.
+    It allows end-users to over-ride the verbosity level in the configurations. It
+    is also responsible for modifying the logging level of Boto3, which is strictly
+    utilized for adding API level debugging. It is strongly suggested to keep
+    boto3 logging at WARNING unless you are needed to debug, as its very verbose.
     """
     config = get_config()
     app_log_level_str = config.log_level
@@ -94,14 +101,15 @@ load_playbooks()
 
 def handler(event: LambdaEvent, context: LambdaContext) -> Response:
     """
-    Main Lambda handler function.
+    The main lambda handler function. Invoked by EventBridge when a GuardDuty
+    finding event is emitted.
 
-    Parameters:
-        event: LambdaEvent, containing the lambda function event data as well as
-            embedded GuardDuty findings.
-        context: Lambda's runtime context.
-    Returns:
-        status: Dict containing status and message.
+    :param event: a LambdaEvent object containing the full JSON passed to
+        an invoked Lambda function. The GuardDutyEvent object is a nested
+        object within this parent object.
+    :param context: not used directly, but is the LambdaContext passed
+        during Lambda function invocation.
+    :return: A Response object that is a dictionary with two keys (status and details).
     """
     logger.info("Lambda starting up.")
 

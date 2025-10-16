@@ -13,8 +13,12 @@ logger = logging.getLogger(__name__)
 
 class GetIamPrincipalDetailsAction(BaseAction):
     """
-    An action to get detailed information about an IAM principal
-    (user or role) including creation date, tags, and attached/inline policies.
+    An action to get detailed information about an IAM principal (user or role)
+    including creation date, tags, and attached/inline policies. This information
+    is used in other Actions as well as passed on to the end user during notifications.
+
+    :param session: a Boto3 Session object to create clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
@@ -22,7 +26,14 @@ class GetIamPrincipalDetailsAction(BaseAction):
         self.iam_client = self.session.client("iam")
 
     def _get_user_details(self, user_name: str) -> Dict[str, Any]:
-        """Helper method to gather details for an IAM user."""
+        """
+        Helper method to gather details for an IAM user. GuardDuty events only
+        provide very high-level information. To provide adequate information to end
+        users we get more data and return it to the end-user.
+
+        :param user_name: the users name.
+        :return: a dictionary consisting of details, inline policies and attached policies.
+        """
         user_info = self.iam_client.get_user(UserName=user_name)["User"]
         attached_policies_metas = self.iam_client.list_attached_user_policies(
             UserName=user_name
@@ -66,7 +77,14 @@ class GetIamPrincipalDetailsAction(BaseAction):
         }
 
     def _get_role_details(self, role_name: str) -> Dict[str, Any]:
-        """Helper method to gather details for an IAM role."""
+        """
+        Similar to _get_user_details, but designed to handle IAM roles instead.
+
+        :param role_name: the name of the IAM role.
+        :return: a dictionary consisting of details, inline policies and attached policies.
+
+        :meta private:
+        """
         role_info = self.iam_client.get_role(RoleName=role_name)["Role"]
 
         attached_policies_metas = self.iam_client.list_attached_role_policies(

@@ -12,8 +12,13 @@ logger = logging.getLogger(__name__)
 
 class GetCloudTrailHistoryAction(BaseAction):
     """
-    An action to retrieve the recent AWS CloudTrail event history for
-    a specific IAM principal ARN identified in a GuardDuty finding.
+    An action to retrieve the recent AWS CloudTrail event history for a specific IAM
+    principal ARN identified in a GuardDuty finding. The volume of items retrieved
+    is controlled via the configuration `cloudtrail_history_max_results`. The range
+    currently is between 1 and 50, with a default value of 25.
+
+    :param session: the Boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

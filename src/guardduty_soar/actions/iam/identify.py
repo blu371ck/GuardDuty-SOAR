@@ -1,6 +1,9 @@
 import logging
 
+import boto3
+
 from guardduty_soar.actions.base import BaseAction
+from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
 
 logger = logging.getLogger(__name__)
@@ -8,10 +11,18 @@ logger = logging.getLogger(__name__)
 
 class IdentifyIamPrincipalAction(BaseAction):
     """
-    An action to parse the GuardDuty finding and identify the core
-    details of the IAM principal (user or role) involved in the
-    event.
+    An action to parse the GuardDuty finding and identify the core details of the
+    IAM principal (user or role) involved in the event. We are provided with very
+    baseline information, and downstream steps use this actions results to make
+    informed decisions on how to grab more appropriate data for end-users.
+
+    :param session: a boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
+
+    def __init__(self, session: boto3.Session, config: AppConfig):
+        super().__init__(session, config)
+        self.cloudtrail_client = self.session.client("cloudtrail")
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         logger.info("Attempting to identify IAM principal from GuardDuty finding.")

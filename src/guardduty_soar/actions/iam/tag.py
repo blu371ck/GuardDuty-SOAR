@@ -1,6 +1,4 @@
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -22,38 +20,6 @@ class TagIamPrincipalAction(BaseAction):
     def __init__(self, session: boto3.Session, config: AppConfig):
         super().__init__(session, config)
         self.iam_client = self.session.client("iam")
-
-    def _calculate_severity(self, severity: float) -> str:
-        """
-        Converts numerical severity to a human friendly label
-        for tagging.
-        """
-        if 9.0 <= severity <= 10.0:
-            return "CRITICAL"
-        elif 7.0 <= severity <= 8.9:
-            return "HIGH"
-        elif 4.0 <= severity <= 6.9:
-            return "MEDIUM"
-        else:
-            return "LOW"
-
-    def _tags_to_apply(
-        self, event: GuardDutyEvent, playbook_name: str
-    ) -> List[Dict[str, Any]]:
-        return [
-            {"Key": "GUARDDUTY-SOAR-ID", "Value": event["Id"]},
-            {"Key": "SOAR-Status", "Value": "Remediation-In-Progress"},
-            {
-                "Key": "SOAR-Action-Time-UTC",
-                "Value": datetime.now(timezone.utc).isoformat(),
-            },
-            {"Key": "SOAR-Finding-Type", "Value": event["Type"]},
-            {
-                "Key": "SOAR-Finding-Severity",
-                "Value": self._calculate_severity(float(event["Severity"])),
-            },
-            {"Key": "SOAR-Playbook", "Value": playbook_name},
-        ]
 
     def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
         principal_identity = kwargs.get("principal_identity")

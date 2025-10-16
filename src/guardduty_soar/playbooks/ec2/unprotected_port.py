@@ -14,8 +14,15 @@ logger = logging.getLogger(__name__)
 )
 class EC2UnprotectedPortPlaybook(EC2BasePlaybook):
     """
-    This playbook class handles the finding related to an
-    unprotected port being probed on an EC2 instance.
+    This playbook class handles the finding related to an unprotected port being probed
+    on an EC2 instance. Contains the finding `Recon:EC2/PortProbeEMRUnprotectedPort`
+    finding, while this name contains EMR, this finding is specifically referring to an
+    EC2 instance within the EMR clusters setup. So, it is handled the same way as regular
+    EC2 instances outside of an EMR cluster.
+
+    :param event: the GuardDutyEvent JSON object.
+    :return: A PlaybookResult consisting of steps taken and any details from those
+        steps.
     """
 
     def run(self, event: GuardDutyEvent) -> PlaybookResult:

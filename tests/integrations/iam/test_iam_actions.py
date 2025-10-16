@@ -202,7 +202,7 @@ def test_analyze_permissions_skipped_integration(real_app_config):
         event={}, principal_policies={}
     )  # Policies don't matter here
 
-    assert result["status"] == "success"
+    assert result["status"] == "skipped"
     logger.info("Successfully verified action is skipped when disabled")
 
 

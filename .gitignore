@@ -42,3 +42,5 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+about_tagging.txt

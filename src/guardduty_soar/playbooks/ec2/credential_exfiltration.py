@@ -14,6 +14,10 @@ class EC2CredentialExfiltrationPlaybook(EC2BasePlaybook):
     """
     A Playbook to handle the GuardDuty finding of `UnauthorizedAccess:EC2/MetadataDNSRebind`.
     Where a potential DNS rebinding attack could be occurring.
+
+    :param event: the GuardDutyEvent json object.
+    :return: A PlaybookResult object consisting of steps taken and details from
+        those steps.
     """
 
     def run(self, event: GuardDutyEvent) -> PlaybookResult:

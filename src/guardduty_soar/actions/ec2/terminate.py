@@ -12,7 +12,13 @@ logger = logging.getLogger(__name__)
 
 class TerminateInstanceAction(BaseAction):
     """
-    An action to terminate a compromised EC2 instance.
+    An action to terminate a potentially compromised EC2 instance. This action
+    is optional, as its destructive. It is controlled using the configuration
+    `allow_terminate`. When `True` shuts down the instance after all information
+    and other steps have been taken. IF `False` is skipped.
+
+    :param session: a Boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

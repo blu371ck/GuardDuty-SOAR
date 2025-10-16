@@ -11,7 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 class SendSESNotificationAction(BaseNotificationAction):
-    """An action to send a formatted notification via AWS SES."""
+    """
+    An action to send formatted notifications via AWS SES. SES notifications
+    are more human-readable and friendly emails.
+
+    :param session: a Boto3 Session object to create clients with.
+    :param config: the Applications configurations.
+    """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
         super().__init__(session, config)

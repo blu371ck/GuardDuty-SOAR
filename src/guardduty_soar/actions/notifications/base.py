@@ -17,7 +17,12 @@ logger = logging.getLogger(__name__)
 class BaseNotificationAction:
     """
     An abstract base class for all notification actions, providing a common
-    interface and helper methods for templating with Jinja2.
+    interface and helper methods for templating with Jinja2. The behavior for
+    notifications is much different than other Actions, so we created a new base
+    class for them. We intend to grow notification options as the application matures.
+
+    :param session: the Boto3 Session object to make clients with.
+    :param config: the Applications configurations.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):
@@ -36,7 +41,17 @@ class BaseNotificationAction:
         self.jinja_env = jinja2.Environment(loader=template_loader, autoescape=True)
 
     def _render_template(self, channel: str, template_name: str, context: dict) -> str:
-        """Renders a Jinja2 template for a specific channel."""
+        """
+        Renders a Jinja2 template for a specific channel. A channel being the
+        communication channel (SES, SNS, etc.).
+
+        :param channel: string value determining which communication channel (SES, SNS, etc.)
+        :param template_name: the name of the template to start rendering.
+        :param context: the dictionary returned from the method `_build_template_context`.
+        :return: the string representation of the rendered template.
+
+        :meta private:
+        """
         full_template_path = f"{channel}/{template_name}"
         template = self.jinja_env.get_template(full_template_path)
         logging.debug(f"Jinja loaded templates in: {full_template_path}.")
@@ -51,6 +66,16 @@ class BaseNotificationAction:
     ) -> Dict[str, Any]:
         """
         Builds a flat dictionary of context data for the Jinja2 templating engine.
+
+        :param finding: the GuardDutyEvent finding. The data is included in our notifications.
+        :param resource: the BaseResourceDetails model, which is used to help determine what
+            values to parse into the templates.
+        :param enriched_data: an optional enriched data set found from actions that grabbed more
+            information on the objects in question from the GuardDuty event.
+
+        :return: Returns a context object dictionary. Used in downstream methods.
+
+        :meta private:
         """
         final_enriched_data = enriched_data
 

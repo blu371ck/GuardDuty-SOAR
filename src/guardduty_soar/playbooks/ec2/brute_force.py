@@ -16,8 +16,12 @@ class EC2BruteForcePlaybook(EC2BasePlaybook):
     """
     A playbook to handle brute force attempts against an EC2 instance on SSH
     or RDP. This particular finding has two scenarios. If the instance reported
-    is the target (via ResourceRole), we harden the security around the instance. If the instance is
-    the source, we run the compromise playbook.
+    is the target (via ResourceRole), we harden the security around the instance.
+    If the instance is the source, we run the compromise playbook, which is through
+    the inherited method `_run_compromise_workflow`.
+
+    :param event: the GuardDutyEvent json object.
+    :return: Returns a PlaybookResult with completed steps and details.
     """
 
     def run(self, event: GuardDutyEvent) -> PlaybookResult:

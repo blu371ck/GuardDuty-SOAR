@@ -12,9 +12,12 @@ logger = logging.getLogger(__name__)
 
 class BlockMaliciousIpAction(BaseAction):
     """
-    An action to block a malicious IP address by adding 'deny' rules for it
-    in the network ACL associated with the affected subnets. Both inbound/
-    outbound.
+    An EC2 specific action to block a malicious IP address by adding 'deny'
+    rules for it in the network ACL associated with the affected subnets. Both
+    inbound/outbound are added.
+
+    :param session: a boto3 Session object to create clients with.
+    :param config: the Application configuration.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

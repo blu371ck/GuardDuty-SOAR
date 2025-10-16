@@ -12,9 +12,14 @@ logger = logging.getLogger(__name__)
 
 class EnrichFindingWithInstanceMetadataAction(BaseAction):
     """
-    An action to enrich the GuardDuty finding with detailed metadata
-    about the affected EC2 instance by calling the describe_instances
-    API call.
+    An action to enrich the GuardDuty finding with detailed metadata about
+    the affected EC2 instance by calling the describe_instances API call. We
+    do this to ensure we provide end-user analysts with as much details about
+    the instance in question, allowing them to make faster responses to our
+    notifications.
+
+    :param session: a Boto3 Session object used for making clients.
+    :param config: the Applications configuration.
     """
 
     def __init__(self, session: boto3.Session, config: AppConfig):

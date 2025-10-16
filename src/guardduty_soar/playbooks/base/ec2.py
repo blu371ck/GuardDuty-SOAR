@@ -23,6 +23,8 @@ class EC2BasePlaybook(BasePlaybook):
 
     Inherits the boto3 Session() from BasePlaybook and initializes all relevant
     EC2 action classes.
+
+    :param config: the Applications configurations.
     """
 
     def __init__(self, config: AppConfig):
@@ -47,6 +49,21 @@ class EC2BasePlaybook(BasePlaybook):
     def _run_compromise_workflow(
         self, event: GuardDutyEvent, playbook_name: str
     ) -> PlaybookResult:
+        """
+        The compromised instance workflow was originally its own self-sufficient
+        playbook. But, after development later EC2 findings showed to require
+        conditional logic to dictate whether a different action was taken. Adding
+        this full functionality to the base class ensured any playbook could
+        call the compromise workflow "If" a certain condition in their playbook
+        was met.
+
+        :param event: the GuardDutyEvent json object
+        :param playbook_name: string representing the playbooks name.
+        :return: a PlaybookResult object containing the status of the steps taken
+            and any detailed information.
+
+        :meta private:
+        """
         results: List[ActionResult] = []
         enriched_data = None
 

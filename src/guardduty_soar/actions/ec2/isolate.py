@@ -13,8 +13,13 @@ logger = logging.getLogger(__name__)
 
 class IsolateInstanceAction(BaseAction):
     """
-    An action to isolate an EC2 instance by dynamically creating a new,
-    deny-all security group in the instance's VPC and applying it.
+    An action to isolate an EC2 instance by dynamically creating a new, deny-all
+    security group in the instance's VPC and applying it. We utilize the boto3
+    method "modify_instance_attributes" as it allows us to set this new security
+    group as the *only* security group for the instance, affectively quarantining it.
+
+    :param boto3_session: a Boto3 Session object used to make clients.
+    :param config: the Applications configurations.
     """
 
     # We originally were using a hard-coded sg that the end-user provided to attach to

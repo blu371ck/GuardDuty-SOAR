@@ -19,6 +19,8 @@ class IamBasePlaybook(BasePlaybook):
 
     Inherits the boto3 session from BasePlaybook and initializes all relevant IAM
     action classes.
+
+    :param config: the Applications configurations.
     """
 
     def __init__(self, config: AppConfig):

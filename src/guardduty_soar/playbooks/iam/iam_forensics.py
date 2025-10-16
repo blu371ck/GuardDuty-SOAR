@@ -35,10 +35,16 @@ logger = logging.getLogger(__name__)
 )
 class IamForensicsPlaybook(IamBasePlaybook):
     """
-    Iam Forensics playbook class. We simply provide as much automated
-    detailed information as we can for security analyst to respond
-    as fast as they can to alerts. We cannot isolate and quarantine
-    like we do with EC2 instances.
+    Iam Forensics playbook is the only dedicated IAM playbook and covers
+    most of the GuardDuty findings for IAM. We don't know any information about
+    the end users environment setup. Blocking/disabling roles/users can be very
+    disruptive to business operations. So, we simply try to find as much information
+    on the IAM identity involved and present that information to end-users so they can
+    make informed decisions faster to the GuardDuty event.
+
+    :param event: the GuardDutyEvent JSON object.
+    :return: A PlaybookResult consisting of steps taken and detailed information
+        from those steps.
     """
 
     def run(self, event: GuardDutyEvent) -> PlaybookResult:
