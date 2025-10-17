@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+
+## [0.4.0] - 2025-10-16
+
+### Added
 - Added Bandit and Safety packages to dev dependencies. We will use these
 for dependency scanning and static code analysis. 
 - Updated pull request documentation to reflect the needed two more steps.
