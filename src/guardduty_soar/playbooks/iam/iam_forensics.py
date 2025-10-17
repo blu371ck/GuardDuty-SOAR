@@ -100,9 +100,14 @@ class IamForensicsPlaybook(IamBasePlaybook):
 
         # Step 4: We gather a set amount of recent API calls using CloudTrail. The
         # number retrieved is based on user configuration.
-        result = self.get_history.execute(
-            event, user_name=identity_details["user_name"]
-        )
+        lookup_attributes = [
+            {
+                "AttributeKey": "Username",
+                "AttributeValue": identity_details["user_name"],
+            }
+        ]
+
+        result = self.get_history.execute(event, lookup_attributes=lookup_attributes)
         if result["status"] == "error":
             # History retrieval failed
             error_details = result["details"]
