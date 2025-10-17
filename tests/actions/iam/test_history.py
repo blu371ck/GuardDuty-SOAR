@@ -16,8 +16,11 @@ def test_get_cloudtrail_history_success(mock_app_config):
 
     user_name = "test-user"
 
+    expected_lookup_attributes = [
+        {"AttributeKey": "Username", "AttributeValue": user_name}
+    ]
     expected_params = {
-        "LookupAttributes": [{"AttributeKey": "Username", "AttributeValue": user_name}],
+        "LookupAttributes": expected_lookup_attributes,
         "MaxResults": 15,
     }
     api_response = {"Events": [{"EventId": "event-1", "EventName": "RunInstances"}]}
@@ -25,7 +28,7 @@ def test_get_cloudtrail_history_success(mock_app_config):
     with Stubber(cloudtrail_client) as stubber:
         stubber.add_response("lookup_events", api_response, expected_params)
         # Pass user_name in kwargs
-        result = action.execute(event={}, user_name=user_name)
+        result = action.execute(event={}, lookup_attributes=expected_lookup_attributes)
 
     assert result["status"] == "success"
     assert len(result["details"]) == 1
@@ -38,7 +41,7 @@ def test_get_cloudtrail_history_missing_input(mock_app_config):
     result = action.execute(event={})
 
     assert result["status"] == "error"
-    assert "Required 'user_name' was not provided" in result["details"]
+    assert "Required 'lookup_attributes' list was not provided" in result["details"]
 
 
 def test_get_cloudtrail_history_client_error(mock_app_config):
@@ -49,12 +52,13 @@ def test_get_cloudtrail_history_client_error(mock_app_config):
     action.cloudtrail_client = cloudtrail_client
 
     user_name = "test-user"  # Use user_name now
+    lookup_attributes = [{"AttributeKey": "Username", "AttributeValue": user_name}]
 
     with Stubber(cloudtrail_client) as stubber:
         stubber.add_client_error(
             "lookup_events", service_error_code="InvalidLookupAttributesException"
         )
-        result = action.execute(event={}, user_name=user_name)
+        result = action.execute(event={}, lookup_attributes=lookup_attributes)
 
     assert result["status"] == "error"
     assert "InvalidLookupAttributesException" in result["details"]

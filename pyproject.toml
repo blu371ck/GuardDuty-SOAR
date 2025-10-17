@@ -46,7 +46,9 @@ dev = [
     "mkdocs-material-extensions",
     "paginate",
     "pymdown-extensions",
-    "requests"
+    "requests",
+    "bandit",
+    "safety"
 ]
 
 [tool.setuptools.packages.find]

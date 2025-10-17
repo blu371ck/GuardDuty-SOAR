@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added Bandit and Safety packages to dev dependencies. We will use these
+for dependency scanning and static code analysis. 
+- Updated pull request documentation to reflect the needed two more steps.
+- Updated GetCloudTrailHistoryAction to be more universal, allowing it to be reused in S3 playbooks. It now takes a KWARG for lookup_attributes, which filters the CloudTrail responses to specific items. Validated unit, integration and e2e tests all still pass.
+- Added new action: S3BlockPublicAccessAction.
+  - Added unit testing for this new action.
+  - Added integration tests for this new action.
 
 ## [0.3.0] - 2025-10-16
 

@@ -72,6 +72,7 @@ def test_get_cloudtrail_history_integration(temporary_iam_user, real_app_config)
     sts_client = session.client("sts")
     account_id = sts_client.get_caller_identity()["Account"]
     user_name = temporary_iam_user["user_name"]
+    lookup_attributes = [{"AttributeKey": "Username", "AttributeValue": user_name}]
 
     # Step 1: Create a temporary access key for the user to perform an action.
     logger.info(f"Creating access key for temporary user {user_name}...")
@@ -99,7 +100,7 @@ def test_get_cloudtrail_history_integration(temporary_iam_user, real_app_config)
 
         # Step 4: Execute the action to fetch the history.
         action = GetCloudTrailHistoryAction(session, real_app_config)
-        result = action.execute(event={}, user_name=user_name)
+        result = action.execute(event={}, lookup_attributes=lookup_attributes)
 
         # Step 5: Validate the results.
         assert result["status"] == "success"

@@ -32,6 +32,7 @@ class AppConfig:
     sns_topic_arn: Optional[str]
     cloudtrail_history_max_results: int
     analyze_iam_permissions: bool
+    allow_s3_public_block: bool
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -119,4 +120,6 @@ def get_config() -> AppConfig:
         or config.get("Notifications", "sns_topic_arn", fallback=None),
         analyze_iam_permissions=os.environ.get("GD_ANALYZE_IAM_PERMISSIONS") is not None
         or config.getboolean("IAM", "analyze_iam_permissions", fallback=True),
+        allow_s3_public_block=os.environ.get("GD_ALLOW_S3_PUBLIC_BLOCK") is not None
+        or config.getboolean("S3", "allow_s3_public_block", fallback=False),
     )

@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Dict, List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -29,24 +30,25 @@ class GetCloudTrailHistoryAction(BaseAction):
         """
         Executes the CloudTrail lookup.
         """
-        user_name = kwargs.get("user_name")
-        if not user_name:
+        lookup_attributes: List[Dict[str, Any]] = kwargs.get("lookup_attributes", [])
+
+        if not lookup_attributes or not isinstance(lookup_attributes, list):
             return {
                 "status": "error",
-                "details": "Required 'user_name' was not provided in kwargs.",
+                "details": "Required 'lookup_attributes' list was not provided or is invalid.",
             }
 
+        principal_identifier = lookup_attributes[0].get("AttributeValue", "Unknown")
+
         logger.warning(
-            f"ACTION: Getting CloudTrail History for principal: {user_name}."
+            f"ACTION: Getting CloudTrail History for principal: {principal_identifier}."
         )
 
         try:
             max_results = self.config.cloudtrail_history_max_results
             logger.info(f"Max results for CloudTrail history set to {max_results}.")
             response = self.cloudtrail_client.lookup_events(
-                LookupAttributes=[
-                    {"AttributeKey": "Username", "AttributeValue": user_name}
-                ],
+                LookupAttributes=lookup_attributes,
                 MaxResults=max_results,
             )
 
@@ -55,6 +57,6 @@ class GetCloudTrailHistoryAction(BaseAction):
             return {"status": "success", "details": events}
 
         except ClientError as e:
-            details = f"Failed to get CloudTrail history for {user_name}. Error: {e}."
+            details = f"Failed to get CloudTrail history for {principal_identifier}. Error: {e}."
             logger.error(details)
             return {"status": "error", "details": details}
