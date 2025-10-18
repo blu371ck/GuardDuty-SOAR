@@ -80,6 +80,16 @@ class EnrichedS3Finding(TypedDict):
     bucket_details: List[Dict[str, Any]]
 
 
+class EnrichedRDSFinding(TypedDict):
+    """
+    This model specifically models the enriched data structure for RDS-related
+    playbook actions. It holds extra information gathered about the DB instance
+    in question, such as security group details and public accessibility.
+    """
+    guardduty_finding: GuardDutyEvent
+    rds_details: Dict[str, Any]
+
+
 class ActionResponse(TypedDict):
     """
     This model is utilized for type checking the responses of Actions. Every

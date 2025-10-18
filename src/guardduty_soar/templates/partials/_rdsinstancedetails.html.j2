@@ -1,0 +1,34 @@
+<ul>
+    <li><strong>Resource Type:</strong> <code>{{ resource.resource_type }}</code></li>
+    {% if resource.db_instance_identifier -%}
+    <li><strong>DB Instance Identifier:</strong> <code>{{ resource.db_instance_identifier }}</code></li>
+    {% endif -%}
+    {% if resource.db_cluster_identifier -%}
+    <li><strong>DB Cluster Identifier:</strong> <code>{{ resource.db_cluster_identifier }}</code></li>
+    {% endif -%}
+    {% if resource.engine -%}
+    <li><strong>Engine:</strong> <code>{{ resource.engine }}</code></li>
+    {% endif -%}
+</ul>
+
+{%- if enriched_data and enriched_data.rds_details %}
+<hr>
+<p><strong>Enriched Details for <code>{{ resource.db_instance_identifier or resource.db_cluster_identifier }}</code></strong></p>
+<ul>
+  {% if enriched_data.rds_details.PubliclyAccessible is not none %}
+  <li><strong>Publicly Accessible:</strong> <code>{{ enriched_data.rds_details.PubliclyAccessible }}</code></li>
+  {% endif %}
+  {% if enriched_data.rds_details.MultiAZ is not none %}
+  <li><strong>Multi-AZ:</strong> <code>{{ enriched_data.rds_details.MultiAZ }}</code></li>
+  {% endif %}
+  {% if enriched_data.rds_details.VpcSecurityGroups %}
+  <li><strong>VPC Security Groups:</strong>
+    <ul>
+    {% for sg in enriched_data.rds_details.VpcSecurityGroups %}
+      <li><code>{{ sg.VpcSecurityGroupId }}</code> (Status: {{ sg.Status }})</li>
+    {% endfor %}
+    </ul>
+  </li>
+  {% endif %}
+</ul>
+{%- endif %}
