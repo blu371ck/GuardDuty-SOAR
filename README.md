@@ -35,7 +35,7 @@ This project is developed in stages. Here is a high-level overview of our progre
 | ✅ IAM Findings | ☐ Test refactoring (where applicable) | ☐ Documentation refactoring and updating |
 | ✅ Live Terraform Testing | ☐ Bug Fixes (Continuous) | ☐ Feature request enhancements |
 | ✅ Documentation Rough |☐ Light Enhancements | ☐ Bug Fixes (Continuous)
-| ☐ S3 Protection Findings |  |  |
+| ✅ S3 Protection Findings |  |  |
 | ☐ RDS Protection Findings |  | |
 | ☐ Lambda Protection Findings |  | |
 | ☐ EKS Protection Findings |  |  |
