@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 import logging
-from typing import Sequence, cast
+from typing import Sequence, cast, TYPE_CHECKING
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_ec2.type_defs import TagTypeDef
-
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.type_defs import TagTypeDef
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +34,13 @@ class TagInstanceAction(BaseAction):
 
         logger.warning(f"ACTION: Tagging instance: {instance_id}")
         try:
+            # We specifically have to enclose Sequence[TagTypeDef] in double-quotes because
+            # this value is not covered by future's annotations, as its not evaluated till
+            # runtime when needed.
             self.ec2_client.create_tags(
                 Resources=[instance_id],
                 Tags=cast(
-                    Sequence[TagTypeDef], self._tags_to_apply(event, playbook_name)
+                    "Sequence[TagTypeDef]", self._tags_to_apply(event, playbook_name)
                 ),
             )
             details = f"Successfully added SOAR tags to instance: {instance_id}."

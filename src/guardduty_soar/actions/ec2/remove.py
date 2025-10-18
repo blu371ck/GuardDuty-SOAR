@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, cast, TYPE_CHECKING
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_ec2.type_defs import IpPermissionTypeDef
 
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.type_defs import IpPermissionTypeDef
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +117,7 @@ class RemovePublicAccessAction(BaseAction):
                     self.ec2_client.revoke_security_group_ingress(
                         GroupId=sg_id,
                         IpPermissions=cast(
-                            List[IpPermissionTypeDef], rules_to_revoke_for_sg
+                            "List[IpPermissionTypeDef]", rules_to_revoke_for_sg
                         ),
                     )
                     revoked_rules_summary.append(
