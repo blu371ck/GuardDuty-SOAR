@@ -1,7 +1,7 @@
 <ul>
-    <li><strong>Resource Type:</strong> <code>{{ resource.resource_type }}</code></li> 
-    <li><strong>Bucket Name:</strong> <code>{{ resource.bucket_name }}</code></li> 
-    <li><strong>Bucket ARN:</strong> <code>{{ resource.bucket_arn }}</code></li> 
+    <li><strong>Resource Type:</strong> <code>{{ resource.resource_type }}</code></li>
+    <li><strong>Bucket Name:</strong> <code>{{ resource.bucket_name }}</code></li>
+    <li><strong>Bucket ARN:</strong> <code>{{ resource.bucket_arn }}</code></li>
 </ul>
 
 {%- if enriched_data and enriched_data.s3_bucket_details %}
@@ -9,7 +9,7 @@
 <hr>
 <p><strong>Enriched Details for <code>{{ bucket.name }}</code></strong></p>
 <ul>
-  <li><strong>Versioning:</strong> <code>{{ bucket.versioning | default('Not Configured') }}</code></li> 
+  <li><strong>Versioning:</strong> <code>{{ bucket.versioning | default('Not Configured') }}</code></li>
   {% if bucket.tags %}
   <li><strong>Tags:</strong>
     <ul>
@@ -31,12 +31,26 @@
   {% if bucket.encryption %}
   <li><strong>Server-Side Encryption:</strong>
     <ul>
-    {% for rule in bucket.encryption.Rules %} 
-      <li><code>Algorithm:</code> {{ rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm }}</li> 
+    {% for rule in bucket.encryption.Rules %}
+      <li><code>Algorithm:</code> {{ rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm }}</li>
     {% endfor %}
     </ul>
   </li>
   {% endif %}
 </ul>
 {% endfor %}
+{%- endif %}
+
+{%- if enriched_data and enriched_data.s3_cloudtrail_history %}
+<h3>📜 Recent S3 CloudTrail Events</h3>
+<p>A summary of the most recent S3-related API calls made by the principal:</p>
+<ul>
+  {%- for event in enriched_data.s3_cloudtrail_history %}
+    <li>
+      <strong>{{ event.EventTime }}</strong> | <code>{{ event.EventName }}</code> (Source: {{ event.CloudTrailEvent.eventSource }})
+      <br>
+      User: <code>{{ event.CloudTrailEvent.userIdentity.userName }}</code>
+    </li>
+  {%- endfor %}
+</ul>
 {%- endif %}

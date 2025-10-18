@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added S3DataLossPreventionPlaybook, performs all the functionality of S3CompromisedDiscoveryPlaybook, but also parses recent history in CloudTrail (based on the configuration `cloudtrail_history_max_results`).
+  - Designed E2E tests for this new playbook.
+- Updated GetCloudTrailHistoryAction to be parse the CloudTrail event JSON. This produces a more readable end-JSON object for SNS.
+- Updated S3 Jinja template to include CloudTrail findings, previously was not included.
+- Added Apache 2.0 license: LICENSE
 
 
 ## [0.5.1]
