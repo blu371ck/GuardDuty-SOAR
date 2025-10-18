@@ -949,3 +949,26 @@ def s3_guardduty_event(s3_finding_detail):
         "resources": [],
         "detail": finding_copy,
     }
+
+
+@pytest.fixture
+def s3_finding_mixed_buckets(s3_finding_detail):
+    """
+    Creates a finding with a mix of a standard GeneralPurpose bucket
+    and a DirectoryBucket to test conditional logic.
+    """
+    finding = copy.deepcopy(s3_finding_detail)  # Starts with one standard bucket
+
+    # Add a directory bucket to the list
+    finding["Resource"]["S3BucketDetails"].append(
+        {
+            "Arn": "arn:aws:s3:::directory-bucket--use1-az1--x-s3",
+            "Name": "directory-bucket-to-skip",
+            "Type": "S3DirectoryBucket",  # The key field to identify the type
+        }
+    )
+    # Add another standard bucket to ensure the loop continues after skipping
+    finding["Resource"]["S3BucketDetails"].append(
+        {"Arn": "arn:aws:s3:::example-bucket2", "Name": "example-bucket2"}
+    )
+    return finding

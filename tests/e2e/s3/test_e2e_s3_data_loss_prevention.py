@@ -4,10 +4,13 @@ import time
 from copy import replace
 
 import boto3
+import pytest
 
 from guardduty_soar.main import handler
 
 logger = logging.getLogger(__name__)
+
+pytestmark = pytest.mark.e2e
 
 
 def test_s3_data_loss_prevention_playbook_e2e(

@@ -58,6 +58,16 @@ class S3BlockPublicAccessAction(BaseAction):
 
         for bucket_data in bucket_details_list:
             try:
+                # We need to check if any of the s3 buckets in the finding are
+                # directory buckets, as we cannot apply public access block policy
+                # in boto3.
+                if bucket_data.get("Type") == "S3DirectoryBucket":
+                    logger.warning(
+                        f"Skipping block public access for bucket {bucket_data.get("Name")} because it is a directory bucket."
+                    )
+                    # move on to the next bucket
+                    continue
+
                 # Use the Pydantic model for validation
                 model = S3BucketDetails(**bucket_data, ResourceType="S3Bucket")
                 bucket_name = model.bucket_name

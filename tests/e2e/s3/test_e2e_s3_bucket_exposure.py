@@ -11,6 +11,8 @@ from guardduty_soar.main import handler
 
 logger = logging.getLogger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 def test_s3_bucket_exposure_playbook_e2e(
     s3_compromise_e2e_setup,

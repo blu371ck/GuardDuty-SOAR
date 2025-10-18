@@ -147,3 +147,41 @@ def test_block_public_access_handles_client_error(
     assert result["status"] == "error"
     assert "Completed with 1 error(s)" in result["details"]
     assert "AccessDenied" in result["details"]
+
+
+def test_block_public_access_skips_directory_bucket(
+    block_s3_action, mock_boto_session, mock_app_config, s3_finding_mixed_buckets
+):
+    """
+    GIVEN a finding with both standard and directory buckets.
+    WHEN the block public access action is executed.
+    THEN it should only attempt to block access on the standard buckets.
+    """
+    _, mock_s3_client = mock_boto_session
+    mock_app_config.allow_s3_public_block = True
+
+    result = block_s3_action.execute(event=s3_finding_mixed_buckets)
+
+    assert result["status"] == "success"
+    assert mock_s3_client.put_public_access_block.call_count == 2
+
+    # FIX: Define the exact configuration dictionary that the action uses.
+    expected_config = {
+        "BlockPublicAcls": True,
+        "IgnorePublicAcls": True,
+        "BlockPublicPolicy": True,
+        "RestrictPublicBuckets": True,
+    }
+
+    # FIX: Use the specific dictionary in the assertion.
+    mock_s3_client.put_public_access_block.assert_has_calls(
+        [
+            call(
+                Bucket="example-bucket1", PublicAccessBlockConfiguration=expected_config
+            ),
+            call(
+                Bucket="example-bucket2", PublicAccessBlockConfiguration=expected_config
+            ),
+        ],
+        any_order=True,
+    )
