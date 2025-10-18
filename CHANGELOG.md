@@ -8,11 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+- Added playbook S3BucketExposurePlaybook, performs all the functionality of S3CompromisedDiscoveryPlaybook, but also runs the optional step of attaching an S3 block public access policy.
+  - Created E2E tests for this new playbook.
 
 
 
-
-## [0.6.0]
+## [0.6.0] - 2025-10-17
 
 ### Added
 - Added S3DataLossPreventionPlaybook, performs all the functionality of S3CompromisedDiscoveryPlaybook, but also parses recent history in CloudTrail (based on the configuration `cloudtrail_history_max_results`).
@@ -22,13 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Apache 2.0 license: LICENSE
 
 
-## [0.5.1]
+## [0.5.1] - 2025-10-17
 
 ### Added
 - Refactored EC2InstanceCompromisePlaybook to no longer inherit the instance compromise workflow from the base EC2 playbook class. This allows the base EC2 playbook class to model all other base playbook classes. With this refactor, we now have EC2BruteForcePlaybook inherit from EC2InstanceCompromisePlaybook (instead of EC2BasePlaybook), so if the conditional logic points towards the instance being compromised, we can run the EC2InstanceCompromisePlaybook through `super()`. 
 
 
-## [0.5.0]
+## [0.5.0] - 2025-10-17
 
 ### Added
 - Added configuration: allow_s3_public_block, a boolean value to control whether or not the playbook should attempt to add a block public access policy to an S3 bucket after an exposed finding.

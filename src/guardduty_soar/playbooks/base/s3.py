@@ -1,3 +1,4 @@
+from guardduty_soar.actions.s3.block import S3BlockPublicAccessAction
 from guardduty_soar.actions.s3.enrich import EnrichS3BucketAction
 from guardduty_soar.actions.s3.tag import TagS3BucketAction
 from guardduty_soar.config import AppConfig
@@ -20,3 +21,4 @@ class S3BasePlaybook(IamBasePlaybook):
 
         self.tag_s3_bucket = TagS3BucketAction(self.session, self.config)
         self.get_s3_enrichment = EnrichS3BucketAction(self.session, self.config)
+        self.attach_block = S3BlockPublicAccessAction(self.session, self.config)

@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict
 
 from guardduty_soar.exceptions import PlaybookActionFailedError
-from guardduty_soar.models import GuardDutyEvent, PlaybookResult, ActionResponse
+from guardduty_soar.models import GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.s3.compromised_discovery import (
     S3CompromisedDiscoveryPlaybook,
@@ -47,7 +47,9 @@ class S3DataLossPreventionPlaybook(S3CompromisedDiscoveryPlaybook):
             {"AttributeKey": "EventSource", "AttributeValue": "s3.amazonaws.com"},
         ]
 
-        history_result = self.get_history.execute(event, lookup_attributes=lookup_attributes)
+        history_result = self.get_history.execute(
+            event, lookup_attributes=lookup_attributes
+        )
         if history_result["status"] == "error":
             # History lookup failed
             error_details = history_result["details"]
@@ -56,6 +58,7 @@ class S3DataLossPreventionPlaybook(S3CompromisedDiscoveryPlaybook):
                 f"GetCloudTrailHistoryAction failed: {error_details}."
             )
         results.append({**history_result, "action_name": "GetCloudTrailHistory"})
+        logger.info("Successfully finished GetCloudTrailHistoryAction.")
         enriched_data["s3_cloudtrail_history"] = history_result["details"]
 
         return {"action_results": results, "enriched_data": enriched_data}
