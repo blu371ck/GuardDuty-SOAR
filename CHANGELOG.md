@@ -8,9 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+## [0.7.0] - 2025-10-18
+
+### Added
 - Added playbook S3BucketExposurePlaybook, performs all the functionality of S3CompromisedDiscoveryPlaybook, but also runs the optional step of attaching an S3 block public access policy.
   - Created E2E tests for this new playbook.
-
 
 
 ## [0.6.0] - 2025-10-17
