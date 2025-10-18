@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+- Added validation scenarios:
+  - Two for S3BucketExposurePlaybook, one with a single bucket and one with more than one bucket.
+  - Two for S3CompromisedDiscoveryPlaybook, one with a single bucket and one with more than one bucket.
+- DataLossPrevention's E2E test is better suited for testing then a validation scenario, so we did not create one for that playbook specifically.
+- Updated import statements in multiple locations due to type checking. Made the special types conditional imports as well as those files now also import annotations from __future__.
 
 
 

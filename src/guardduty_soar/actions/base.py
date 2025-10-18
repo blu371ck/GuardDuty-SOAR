@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import boto3
-from mypy_boto3_s3.type_defs import TagTypeDef
 
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
+
+if TYPE_CHECKING:
+    from mypy_boto3_s3.type_defs import TagTypeDef
 
 logger = logging.getLogger(__name__)
 

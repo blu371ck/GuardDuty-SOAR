@@ -1,6 +1,9 @@
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from __future__ import annotations
 
-from mypy_boto3_ec2.type_defs import InstanceTypeDef
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, TypedDict
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.type_defs import InstanceTypeDef
 
 
 class Response(TypedDict):
