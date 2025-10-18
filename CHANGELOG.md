@@ -8,13 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+
+## [0.7.2] - 2025-10-18
+
+### Added
 - Added validation scenarios:
   - Two for S3BucketExposurePlaybook, one with a single bucket and one with more than one bucket.
   - Two for S3CompromisedDiscoveryPlaybook, one with a single bucket and one with more than one bucket.
 - DataLossPrevention's E2E test is better suited for testing then a validation scenario, so we did not create one for that playbook specifically.
 - Updated import statements in multiple locations due to type checking. Made the special types conditional imports as well as those files now also import annotations from __future__.
-
-
 
 ## [0.7.1] - 2025-10-18
 
@@ -28,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added playbook S3BucketExposurePlaybook, performs all the functionality of S3CompromisedDiscoveryPlaybook, but also runs the optional step of attaching an S3 block public access policy.
   - Created E2E tests for this new playbook.
 
-
 ## [0.6.0] - 2025-10-17
 
 ### Added
@@ -38,12 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated S3 Jinja template to include CloudTrail findings, previously was not included.
 - Added Apache 2.0 license: LICENSE
 
-
 ## [0.5.1] - 2025-10-17
 
 ### Added
 - Refactored EC2InstanceCompromisePlaybook to no longer inherit the instance compromise workflow from the base EC2 playbook class. This allows the base EC2 playbook class to model all other base playbook classes. With this refactor, we now have EC2BruteForcePlaybook inherit from EC2InstanceCompromisePlaybook (instead of EC2BasePlaybook), so if the conditional logic points towards the instance being compromised, we can run the EC2InstanceCompromisePlaybook through `super()`. 
-
 
 ## [0.5.0] - 2025-10-17
 
@@ -87,7 +88,6 @@ for dependency scanning and static code analysis.
 - Added MkDocs to development packages.
   - Added documents from other repo to this repo, to make self-containing.
 - Modified TagS3BucketAction to handle the updated data models and templates.
-
 
 ## [0.2.0] - 2025-10-16
 
