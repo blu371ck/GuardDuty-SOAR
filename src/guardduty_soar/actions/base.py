@@ -1,9 +1,10 @@
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Sequence
 
 import boto3
+from mypy_boto3_s3.type_defs import TagTypeDef
 
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
@@ -51,7 +52,7 @@ class BaseAction(ABC):
 
     def _tags_to_apply(
         self, event: GuardDutyEvent, playbook_name: str
-    ) -> List[Dict[str, Any]]:
+    ) -> Sequence[TagTypeDef]:
         """
         This function produces the consistent tagging scheme we utilize when
         applying tags to objects in findings. Every playbook tags and they are

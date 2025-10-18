@@ -50,8 +50,6 @@ class S3CompromisedDiscoveryPlaybook(S3BasePlaybook):
             )
         results.append({**result, "action_name": "TagS3Bucket"})
         logger.info("Successfully tagged bucket(s).")
-        buckets_information = result["details"]
-        enriched_data["buckets"] = buckets_information
 
         # Step 2: We identify the IAM principal involved.
         result = self.identify_principal.execute(event)
@@ -82,5 +80,35 @@ class S3CompromisedDiscoveryPlaybook(S3BasePlaybook):
             )
         results.append({**result, "action_name": "TagIamPrincipal"})
         logger.info("Successfully tagged associated IAM principal.")
+
+        # Step 4: We gather enriched data about the bucket and its policies.
+        result = self.get_s3_enrichment.execute(event)
+        if result["status"] == "error":
+            # Enrichment failed
+            error_details = result["details"]
+            logger.error(f"Action 'enrich_s3_data' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"EnrichS3BucketAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "EnrichS3Bucket"})
+        enriched_data["s3_bucket_details"] = result["details"]
+        logger.info("Successfully enriched S3 finding.")
+
+        # Step 5: (Optional) step, if enabled we quarantine the IAM Principal from
+        # the finding.
+        result = self.quarantine_principal.execute(event, identity=identity_details)
+        if result["status"] == "error":
+            # Quarantine failed
+            error_details = result["details"]
+            logger.error(f"Action 'quarantine_iam_principal' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"QuarantineIamPrincipalAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "QuarantineIamPrincipal"})
+
+        if result["status"] != "error":
+            logger.info(
+                f"Quarantine IAM Principal step finished with status '{result['status']}': {result['details']}."
+            )
 
         return {"action_results": results, "enriched_data": enriched_data}

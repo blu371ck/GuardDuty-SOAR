@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 class QuarantineInstanceProfileAction(BaseAction):
     """
     An action to quarantine an EC2 instance's IAM role by attaching the AWS
-    managed policy `AWSDenyAll` to it. This action correctly looks up the role
+    managed policy `AWSDenyAll` to it (or a deny all policy you choose by setting
+    the configuration `iam_deny_all_policy_arn`). This action correctly looks up the role
     associated with the instance profile. Then attaches the deny-all policy to
     it.
 
@@ -69,14 +70,13 @@ class QuarantineInstanceProfileAction(BaseAction):
 
             role_name = roles[0]["RoleName"]  # This is the correct role name
             logger.info(f"Found instance role: {role_name}.")
-            deny_policy_arn = "arn:aws:iam::aws:policy/AWSDenyAll"
 
             # Step 4: Attach the deny policy to the correct role
             logger.warning(
-                f"ACTION: Attaching deny-all policy ({deny_policy_arn}) to IAM role ({role_name})."
+                f"ACTION: Attaching deny-all policy ({self.config.iam_deny_all_policy_arn}) to IAM role ({role_name})."
             )
             self.iam_client.attach_role_policy(
-                RoleName=role_name, PolicyArn=deny_policy_arn
+                RoleName=role_name, PolicyArn=self.config.iam_deny_all_policy_arn
             )
 
             details = f"Successfully attached deny-all policy to role {role_name}."

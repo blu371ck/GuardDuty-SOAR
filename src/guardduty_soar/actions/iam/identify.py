@@ -45,6 +45,7 @@ class IdentifyIamPrincipalAction(BaseAction):
                 # For assumed roles, UserName is often 'RoleName/SessionName'
                 role_name = user_name.split("/")[0] if user_name else ""
                 principal_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+                user_name = role_name
             elif user_type == "Root":
                 principal_arn = f"arn:aws:iam::{account_id}:root"
 

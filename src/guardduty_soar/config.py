@@ -33,6 +33,8 @@ class AppConfig:
     cloudtrail_history_max_results: int
     analyze_iam_permissions: bool
     allow_s3_public_block: bool
+    allow_iam_quarantine: bool
+    iam_deny_all_policy_arn: str
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -122,4 +124,13 @@ def get_config() -> AppConfig:
         or config.getboolean("IAM", "analyze_iam_permissions", fallback=True),
         allow_s3_public_block=os.environ.get("GD_ALLOW_S3_PUBLIC_BLOCK") is not None
         or config.getboolean("S3", "allow_s3_public_block", fallback=False),
+        allow_iam_quarantine=os.environ.get("GD_ALLOW_IAM_QUARANTINE") is not None
+        or config.getboolean("IAM", "allow_iam_quarantine", fallback=False),
+        iam_deny_all_policy_arn=os.environ.get("GD_IAM_DENY_ALL_POLICY_ARN")
+        or config.get(
+            "IAM",
+            "iam_deny_all_policy_arn",
+            fallback="arn:aws:iam::aws:policy/AWSDenyAll",
+        )
+        or "arn:aws:iam::aws:policy/AWSDenyAll",
     )

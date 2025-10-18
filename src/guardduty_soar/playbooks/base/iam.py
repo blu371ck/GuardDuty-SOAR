@@ -4,6 +4,7 @@ from guardduty_soar.actions.iam.analyze import AnalyzePermissionsAction
 from guardduty_soar.actions.iam.details import GetIamPrincipalDetailsAction
 from guardduty_soar.actions.iam.history import GetCloudTrailHistoryAction
 from guardduty_soar.actions.iam.identify import IdentifyIamPrincipalAction
+from guardduty_soar.actions.iam.quarantine import QuarantineIamPrincipalAction
 from guardduty_soar.actions.iam.tag import TagIamPrincipalAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.playbook_registry import BasePlaybook
@@ -34,3 +35,6 @@ class IamBasePlaybook(BasePlaybook):
         self.get_history = GetCloudTrailHistoryAction(self.session, self.config)
         self.get_details = GetIamPrincipalDetailsAction(self.session, self.config)
         self.analyze_permissions = AnalyzePermissionsAction(self.session, self.config)
+        self.quarantine_principal = QuarantineIamPrincipalAction(
+            self.session, self.config
+        )

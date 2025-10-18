@@ -8,8 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
-
+- Added configuration: allow_s3_public_block, a boolean value to control whether or not the playbook should attempt to add a block public access policy to an S3 bucket after an exposed finding.
+- Added configuration: allow_iam_quarantine, a boolean value to control whether or not the playbook should attempt to add a quarantine AWS Policy on finding IAM principals (right now specifically only on S3 findings).
+- Added configuration: iam_deny_all_policy_arn, a string representing a provided ARN for an AWS policy that denies all actions on all resources. This policy is used in quarantine actions, and by default we specify the AWS managed policy AWSDenyAll.
+- Updated the IAM action IdentifyIamPrincipalAction, to return both users user name and roles name, as user_name. This is used in S3 playbooks for QuarantineIamPrincipalAction. That action has also been updated with this change.
+- Added new action: QuarantineIamPrincipalAction, this action, when enabled, adds the deny-all IAM policy to the IAM principal identified in the GuardDuty finding (right now specifically for S3 playbooks).
+  - Added unit testing for this new action.
+  - Added integration testing for this new action.
+- Updated SendSESNotificationAction as there was some new details that needed to be passed to templates from S3.
+  - Updated SendSESNotificationAction's unit tests.
+  - Updated SendSESNotificationAction's integration tests.
+- Updated SendSNSNotificationAction as there was issues with the enriched data being represented as string instead of pure JSON. To fix it, we instead pass the JSON serialized object directly to SNS, instead of tinkering around with templates.
+  - Removed sns/*.json.j2 files
+- Completed S3CompromisedDiscoveryPlaybook
+  - Created E2E tests for this playbook
+- Modified templates to be pure HTML, renamed all template files to be *.html.j2
+- Removed Markdown as a dependency and recompiled the requirements.txt files
+- Fixed some Mypy errors.
 
 ## [0.4.0] - 2025-10-16
 

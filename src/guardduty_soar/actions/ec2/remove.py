@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import boto3
 from botocore.exceptions import ClientError
+from mypy_boto3_ec2.type_defs import IpPermissionTypeDef
 
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
@@ -93,7 +94,7 @@ class RemovePublicAccessAction(BaseAction):
                     # If this rule contains any public ranges, construct a new, clean
                     # rule object containing ONLY those public ranges for revocation.
                     if public_ipv4_ranges or public_ipv6_ranges:
-                        revocation_rule = {
+                        revocation_rule: Dict[str, Any] = {
                             "IpProtocol": rule["IpProtocol"],
                             "FromPort": rule.get("FromPort"),
                             "ToPort": rule.get("ToPort"),
@@ -110,7 +111,10 @@ class RemovePublicAccessAction(BaseAction):
                         f"ACTION: Found {len(rules_to_revoke_for_sg)} public rule(s) in {sg_id}. Preparing to revoke."
                     )
                     self.ec2_client.revoke_security_group_ingress(
-                        GroupId=sg_id, IpPermissions=rules_to_revoke_for_sg
+                        GroupId=sg_id,
+                        IpPermissions=cast(
+                            List[IpPermissionTypeDef], rules_to_revoke_for_sg
+                        ),
                     )
                     revoked_rules_summary.append(
                         f"Removed {len(rules_to_revoke_for_sg)} public rule(s) from {sg_id}."

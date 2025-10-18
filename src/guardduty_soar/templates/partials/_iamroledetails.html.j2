@@ -1,0 +1,55 @@
+{% if enriched_data and enriched_data.details is mapping %}
+    <ul>
+        <li><strong>Role Name:</strong> <code>{{ enriched_data.details.RoleName }}</code></li>
+        <li><strong>Role ID:</strong> <code>{{ enriched_data.details.RoleId }}</code></li>
+        <li><strong>ARN:</strong> <code>{{ enriched_data.details.Arn }}</code></li>
+        <li><strong>Created:</strong> <code>{{ enriched_data.details.CreateDate }}</code></li>
+    </ul>
+
+    {%- if enriched_data.attached_policies %}
+    <p><strong>Attached Policies:</strong></p>
+    <ul>
+      {%- for policy in enriched_data.attached_policies %}
+        <li>{{ policy.PolicyName }} <code>({{ policy.PolicyArn }})</code></li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+
+    {%- if enriched_data.inline_policies %}
+    <p><strong>Inline Policies:</strong></p>
+    <ul>
+      {%- for name, doc in enriched_data.inline_policies.items() %}
+        <li>{{ name }}</li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+
+    {%- if enriched_data.permission_analysis and enriched_data.permission_analysis.risks_found %}
+    <h3>🚨 Policy Analysis</h3>
+    <p>The following risks were identified in the principal's IAM policies:</p>
+    <ul>
+      {%- for policy_name, risks in enriched_data.permission_analysis.risks_found.items() %}
+        <li><strong>{{ policy_name }}</strong>:
+          <ul>
+          {%- for risk in risks %}
+            <li><code>{{ risk | safe }}</code></li>
+          {%- endfor %}
+          </ul>
+        </li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+
+    {%- if enriched_data.cloudtrail_history %}
+    <h3>📜 Recent CloudTrail Events</h3>
+    <p>A summary of the most recent API calls made by this principal:</p>
+    <ul>
+      {%- for event in enriched_data.cloudtrail_history %}
+        <li><strong>{{ event.EventTime }}</strong> | <code>{{ event.EventName }}</code> (Source: {{ event.EventSource }})</li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+
+{% else %}
+    <p><em>Detailed role information was not available for this finding.</em></p>
+{% endif %}

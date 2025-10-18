@@ -379,14 +379,13 @@ wheels = [
 
 [[package]]
 name = "guardduty-soar"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "aws-lambda-powertools" },
     { name = "boto3" },
     { name = "boto3-stubs" },
     { name = "jinja2" },
-    { name = "markdown" },
     { name = "pydantic" },
 ]
 
@@ -437,7 +436,6 @@ requires-dist = [
     { name = "idna", marker = "extra == 'dev'" },
     { name = "isort", marker = "extra == 'dev'" },
     { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "markdown", specifier = ">=3.9" },
     { name = "mergedeep", marker = "extra == 'dev'" },
     { name = "mkdocs", marker = "extra == 'dev'" },
     { name = "mkdocs-get-deps", marker = "extra == 'dev'" },

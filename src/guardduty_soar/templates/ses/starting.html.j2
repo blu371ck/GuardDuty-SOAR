@@ -1,0 +1,21 @@
+Subject: ⚙️ SOAR Playbook Started: {{ finding.Type }}
+
+<h2>⚙️ Playbook '{{ playbook_name }}' has Started</h2>
+
+<p>An automated security playbook has been triggered in response to a GuardDuty finding.</p>
+
+<h3>Finding Details</h3>
+<ul>
+    <li><strong>Title:</strong> {{ finding.Title }}</li>
+    <li><strong>Severity:</strong> {{ finding.Severity }}</li>
+    <li><strong>Account:</strong> {{ finding.AccountId }}</li>
+    <li><strong>Region:</strong> {{ finding.Region }}</li>
+</ul>
+
+<p><strong>Description:</strong> {{ finding.Description }}</p>
+
+<hr>
+
+<h3>Affected Resource Details</h3>
+{# This will include the appropriate HTML partial based on the resource type #}
+{% include resource.template_name with context %}

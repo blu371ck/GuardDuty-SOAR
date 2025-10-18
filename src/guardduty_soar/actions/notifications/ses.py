@@ -1,7 +1,6 @@
 import logging
 
 import boto3
-import markdown
 
 from guardduty_soar.actions.notifications.base import BaseNotificationAction
 from guardduty_soar.config import AppConfig
@@ -30,22 +29,28 @@ class SendSESNotificationAction(BaseNotificationAction):
             return {"status": "skipped", "details": "SES notifications are disabled."}
 
         try:
-            context = self._build_template_context(**kwargs)
             template_type = kwargs.get("template_type", "starting")
-            rendered_content = self._render_template(
-                "ses", f"{template_type}.md.j2", context
-            )
+            template = self.jinja_env.get_template(f"ses/{template_type}.html.j2")
+            rendered_content = template.render(**kwargs)
 
-            subject, body = rendered_content.split("\n", 1)
+            subject, body = rendered_content.strip().split("\n", 1)
             subject = subject.replace("Subject: ", "").strip()
-            html_body = markdown.markdown(body)
+
+            # The template now generates HTML directly.
+            # We no longer need the markdown library. 'body' is now 'html_body'.
+            html_body = body
 
             self.ses_client.send_email(
                 Source=self.config.registered_email_address,
                 Destination={"ToAddresses": [self.config.registered_email_address]},
                 Message={
                     "Subject": {"Data": subject},
-                    "Body": {"Text": {"Data": body}, "Html": {"Data": html_body}},
+                    "Body": {
+                        "Text": {
+                            "Data": "Please view this email in an HTML-compatible client."
+                        },
+                        "Html": {"Data": html_body},
+                    },
                 },
             )
             logger.info("Successfully sent notification via SES.")

@@ -95,8 +95,8 @@ class EnrichS3BucketAction(BaseAction):
 
         # 6. Get Bucket Tags
         try:
-            response = self.s3_client.get_bucket_tagging(Bucket=bucket_name)
-            data["tags"] = response.get("TagSet", [])
+            tagging_response = self.s3_client.get_bucket_tagging(Bucket=bucket_name)
+            data["tags"] = tagging_response.get("TagSet", [])
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchTagSet":
                 logger.info(f"No tags for bucket: {bucket_name}.")

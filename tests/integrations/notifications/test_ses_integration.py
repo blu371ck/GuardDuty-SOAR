@@ -1,3 +1,6 @@
+# In tests/integrations/notifications/test_ses_integration.py
+
+import dataclasses
 import logging
 
 import boto3
@@ -7,36 +10,51 @@ from guardduty_soar.actions.notifications.ses import SendSESNotificationAction
 from guardduty_soar.schemas import map_resource_to_model
 
 pytestmark = pytest.mark.integration
-
 logger = logging.getLogger(__name__)
 
 
-def test_ses_action_integration(guardduty_finding_detail, real_app_config):
+def test_ses_notification_action_integration(real_app_config, s3_guardduty_event):
     """
-    Tests the SendSESNotificationAction against the REAL AWS SES service.
+    Tests that the SendSESNotificationAction can successfully send a real email
+    using the configured, verified email address.
     """
-    if not real_app_config.allow_ses or not real_app_config.registered_email_address:
+    # The real application config, ensuring SES is enabled
+    # The 'registered_email_address' from your .env file will be used as both sender and receiver.
+    test_config = dataclasses.replace(real_app_config, allow_ses=True)
+
+    # Ensure a verified email is actually configured before running
+    if not test_config.registered_email_address:
         pytest.skip(
-            "Skipping SES test: 'allow_ses' is not True or 'registered_email_address' is not configured."
+            "No registered_email_address is configured to run SES integration test."
         )
 
     session = boto3.Session()
-    action = SendSESNotificationAction(session, real_app_config)
+    action = SendSESNotificationAction(session, test_config)
 
-    # 1. Create the base resource model
-    resource_model = map_resource_to_model(guardduty_finding_detail.get("Resource", {}))
+    # Prepare a realistic context for the template
+    finding = s3_guardduty_event["detail"]
+    resource = map_resource_to_model(finding.get("Resource", {}))
 
-    # 2. Call execute with named arguments
-    result = action.execute(
-        finding=guardduty_finding_detail,
-        resource=resource_model,
-        enriched_data=None,  # For a 'starting' notification, enriched_data is usually None
-        playbook_name="IntegrationTestPlaybook",
-        template_type="starting",
-    )
+    kwargs = {
+        "finding": finding,
+        "playbook_name": "SESIntegrationTestPlaybook",
+        "template_type": "complete",
+        "resource": resource,
+        "enriched_data": {
+            "versioning": "Enabled",
+            "tags": [{"Key": "Test", "Value": "True"}],
+        },
+        "final_status_emoji": "✅",
+        "final_status_message": "Playbook completed successfully.",
+        "actions_summary": "- TestAction1: SUCCESS\n- TestAction2: SKIPPED",
+    }
 
-    assert result["status"] == "success"
-    assert "Successfully sent notification via SES" in result["details"]
+    # WHEN: The action is executed, making a real API call to the SES service
     logger.info(
-        f"Successfully sent SES test email to {real_app_config.registered_email_address}."
+        f"Executing SES action to send a real email to {test_config.registered_email_address}..."
     )
+    result = action.execute(**kwargs)
+
+    # THEN: The action should report success, indicating a successful API call
+    assert result["status"] == "success"
+    logger.info("Successfully verified that the SES action made a successful API call.")
