@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+
+## [0.5.0]
+
+### Added
 - Added configuration: allow_s3_public_block, a boolean value to control whether or not the playbook should attempt to add a block public access policy to an S3 bucket after an exposed finding.
 - Added configuration: allow_iam_quarantine, a boolean value to control whether or not the playbook should attempt to add a quarantine AWS Policy on finding IAM principals (right now specifically only on S3 findings).
 - Added configuration: iam_deny_all_policy_arn, a string representing a provided ARN for an AWS policy that denies all actions on all resources. This policy is used in quarantine actions, and by default we specify the AWS managed policy AWSDenyAll.
