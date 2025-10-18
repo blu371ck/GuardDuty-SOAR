@@ -55,6 +55,8 @@ nav:
     - 'Playbooks':
       - 'EC2': 'ec2_playbooks.md'
       - 'IAM': 'iam_playbooks.md'
+      - 'S3': 's3_playbooks.md'
     - 'Actions':
       - 'EC2': 'ec2_actions.md'
       - 'IAM': 'iam_actions.md'
+      - 'S3': 's3_actions.md'

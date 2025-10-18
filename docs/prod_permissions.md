@@ -1,110 +1,107 @@
 # 🔐 IAM Permissions
 
-The GuardDuty-SOAR application requires specific IAM permissions to interact with AWS services. The required permissions differ based on whether you are deploying the application for production or running the end-to-end test suite.
+The GuardDuty-SOAR application requires specific IAM permissions to interact with AWS services. Permissions differ for production execution versus development testing.
 
-***
+---
+## Production Execution Role Permissions
 
-#### Production Execution Role Permissions
+This set of permissions should be attached to the IAM Role used by your AWS Lambda function.
 
-This set of permissions should be attached to the IAM Role that your AWS Lambda function uses for execution. These permissions grant the application the ability to perform forensic and remediation actions defined in the playbooks.
+### Amazon EC2
 
-**Amazon EC2**
-
-* `ec2:CreateNetworkAclEntry`&#x20;
-* `ec2:CreateSnapshot`&#x20;
-* `ec2:CreateTags`&#x20;
-* `ec2:DescribeAddresses`&#x20;
-* `ec2:DescribeInstances`&#x20;
-* `ec2:DescribeInstanceStatus`&#x20;
-* `ec2:DescribeNetworkAcls`&#x20;
-* `ec2:DescribeSecurityGroups`&#x20;
-* `ec2:DescribeSnapshots`&#x20;
-* `ec2:DescribeTags`&#x20;
-* `ec2:DescribeVolumes`&#x20;
-* `ec2:ModifyInstanceAttribute`&#x20;
-* `ec2:RevokeSecurityGroupIngress`&#x20;
-* `ec2:TerminateInstances`&#x20;
-* `ec2:CreateSecurityGroup`&#x20;
+* `ec2:CreateNetworkAclEntry`
+* `ec2:CreateSecurityGroup`
+* `ec2:CreateSnapshot`
+* `ec2:CreateTags`
+* `ec2:DescribeInstances`
+* `ec2:DescribeNetworkAcls`
+* `ec2:DescribeSecurityGroups`
+* `ec2:ModifyInstanceAttribute`
 * `ec2:RevokeSecurityGroupEgress`
+* `ec2:RevokeSecurityGroupIngress`
+* `ec2:TerminateInstances`
 
-**AWS IAM**
+### AWS IAM
 
-* `iam:AttachRolePolicy`&#x20;
-* `iam:DetachRolePolicy`&#x20;
-* `iam:GetUser`&#x20;
-* `iam:GetUserPolicy`&#x20;
-* `iam:ListAttachedRolePolicies`&#x20;
-* `iam:ListAttachedUserPolicies`&#x20;
-* `iam:ListUserPolicies`&#x20;
-* `iam:TagUser`&#x20;
-* `iam:TagRole`
-* `iam:PutUserPolicy`&#x20;
+* `iam:AttachRolePolicy`
+* `iam:AttachUserPolicy`
 * `iam:GetInstanceProfile`
+* `iam:GetRole`
+* `iam:GetUser`
+* `iam:ListAttachedRolePolicies`
+* `iam:ListAttachedUserPolicies`
+* `iam:ListRolePolicies`
+* `iam:ListUserPolicies`
+* `iam:TagRole`
+* `iam:TagUser`
 
-**AWS CloudTrail**
+### Amazon S3
 
-* `cloudtrail:LookupEvents`&#x20;
+* `s3:GetBucketTagging`
+* `s3:GetEncryptionConfiguration`
+* `s3:GetBucketPublicAccessBlock`
+* `s3:GetBucketPolicy`
+* `s3:PutBucketTagging`
+* `s3:PutBucketPublicAccessBlock`
+* `s3:GetBucketEncryption`
+* `s3:GetBucketVersioning`
+* `s3:GetBucketLogging`
 
-**Amazon SNS**
+### AWS CloudTrail
+
+* `cloudtrail:LookupEvents`
+
+### Amazon SNS & SES
 
 * `sns:Publish`
-
-**Amazon SES**
-
 * `ses:SendEmail`
 
-***
+---
+## E2E Testing & Deployment Permissions
 
-#### E2E Testing & Deployment Permissions
+These broad permissions are required by a developer or CI/CD pipeline to run the test suite, which creates and destroys temporary infrastructure. **These are not required for the production Lambda role.**
 
-These are broad permissions required by a developer or a CI/CD pipeline to run the end-to-end test suite, which involves creating and destroying temporary AWS infrastructure. **These permissions are not required for the production Lambda execution role.**
+### Amazon EC2
 
-**Amazon EC2**
+* All production permissions, plus: 
+* `ec2:AssociateIamInstanceProfile` 
+* `ec2:AuthorizeSecurityGroupIngress`
+* `ec2:CreateSubnet`
+* `ec2:CreateVpc`
+* `ec2:DeleteSecurityGroup`
+* `ec2:DeleteSubnet`
+* `ec2:DeleteSnapshot`
+* `ec2:DeleteVpc`
+* `ec2:RunInstances`
 
-* All permissions from the production role, plus:
-* `ec2:AssociateIamInstanceProfile`&#x20;
-* `ec2:AuthorizeSecurityGroupIngress`&#x20;
-* `ec2:CreateSecurityGroup`&#x20;
-* `ec2:CreateSubnet`&#x20;
-* `ec2:CreateVpc`&#x20;
-* `ec2:DeleteSecurityGroup`&#x20;
-* `ec2:DeleteSubnet`&#x20;
-* `ec2:DeleteSnapshot`&#x20;
-* `ec2:DeleteVpc`&#x20;
-* `ec2:RunInstances`&#x20;
+### AWS IAM
 
-**AWS IAM**
-
-* All permissions from the production role, plus:
-* `iam:AddRoleToInstanceProfile`&#x20;
-* `iam:CreateInstanceProfile`&#x20;
-* `iam:CreatePolicy`&#x20;
-* `iam:CreateRole`&#x20;
-* `iam:CreateUser`&#x20;
-* `iam:DeleteInstanceProfile`&#x20;
+* All production permissions, plus:
+* `iam:AddRoleToInstanceProfile`
+* `iam:CreateAccessKey`
+* `iam:CreateInstanceProfile`
+* `iam:CreatePolicy`
+* `iam:CreateRole`
+* `iam:CreateUser`
+* `iam:DeleteAccessKey`
+* `iam:DeleteInstanceProfile`
 * `iam:DeletePolicy`
-* `iam:DeleteRole`&#x20;
-* `iam:DeleteUser`&#x20;
-* `iam:DeleteUserPolicy`&#x20;
-* `iam:RemoveRoleFromInstanceProfile`&#x20;
+* `iam:DeleteRole`
+* `iam:DeleteUser`
+* `iam:DeleteUserPolicy`
+* `iam:DetachRolePolicy`
+* `iam:DetachUserPolicy`
+* `iam:PutUserPolicy`
+* `iam:RemoveRoleFromInstanceProfile`
 
-**Amazon SQS**
+### Amazon S3
 
-* `sqs:CreateQueue`&#x20;
-* `sqs:DeleteQueue`&#x20;
-* `sqs:GetQueueAttributes`
-* `sqs:SetQueueAttributes`&#x20;
-* `sqs:ReceiveMessage`
-* `sqs:DeleteMessageBatch`
+* All production permissions, plus: 
+* `s3:CreateBucket`
+* `s3:DeleteBucket`
 
-**Amazon SNS**
+### Amazon SQS & SNS
+* `sqs:*` and `sns:*` (for creating temporary notification channels)
 
-* `sns:Subscribe`&#x20;
-* `sns:Unsubscribe`&#x20;
-
-**AWS SSM**
-
-* `ssm:GetParameter`&#x20;
-
-!!! note "Note on SNS/SQS Permissions"
-    These permissions are used by the E2E test suite to create a temporary notification verification channel. The tests dynamically create an SQS queue and subscribe it to the application's SNS topic. This allows the test to programmatically capture and validate the content of the `playbook_started` and `playbook_completed` notifications, ensuring the entire workflow is functioning correctly.
+### AWS SSM
+* `ssm:GetParameter`

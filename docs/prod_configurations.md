@@ -22,6 +22,14 @@ These parameters control the behavior of playbooks that target IAM principals.
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cloudtrail_history_max_results` | The maximum number of recent CloudTrail events to retrieve for an IAM principal involved in a finding. (Min: 1, Max: 50, Default: 25)                   |
 | `analyze_iam_permissions`        | If `True`, enables the analysis of a principal's attached and inline policies to identify overly permissive rules. |
+| `allow_iam_quarantine` | If `True`, enables the attachment of a quarantine IAM policy to the identity from a finding. Not utilized in IAM playbooks, but is utilized in S3 playbooks. |
+| `iam_deny_all_policy_arn` | A IAM policy arn that will be utilized to quarantine IAM principals (attach a deny-all policy). By default we provide the AWS managed AWSDenyAll policy. |
+
+### S3
+
+| Settings |Description |
+|--|--|
+| `allow_s3_public_block` | If `true`, enables S3AttachPublicAccessBlockAction to attach public access block policy to an S3 bucket. Utilized in S3BucketExposurePlaybook. |
 
 ### Notifications
 
