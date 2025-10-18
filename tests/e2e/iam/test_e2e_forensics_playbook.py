@@ -74,7 +74,7 @@ def test_iam_forensics_playbook_e2e(
     assert "IdentifyPrincipal: SUCCESS" in summary
     assert "TagPrincipal: SUCCESS" in summary
     assert "GetIamPrincipalDetails: SUCCESS" in summary
-    assert "GetIamCloudTrailHistory: SUCCESS" in summary
+    assert "GetCloudTrailHistory: SUCCESS" in summary
     assert "AnalyzeIamPermissions: SUCCESS" in summary
     logger.info(
         "Successfully verified all playbook actions reported success in notification."

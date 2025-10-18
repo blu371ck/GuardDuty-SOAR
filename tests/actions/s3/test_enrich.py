@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -157,3 +157,24 @@ def test_enrich_s3_skips_non_s3_finding(
     # Ensure no S3 API calls were attempted
     mock_s3_client.get_public_access_block.assert_not_called()
     mock_s3_client.get_bucket_policy.assert_not_called()
+
+
+def test_enrich_s3_skips_directory_bucket(enrich_s3_action, s3_finding_mixed_buckets):
+    """
+    GIVEN a finding with both standard and directory buckets.
+    WHEN the enrich action is executed.
+    THEN it should only attempt to enrich the standard buckets.
+    """
+    # We patch the internal helper method to see what it gets called with
+    with patch.object(enrich_s3_action, "_get_enrichment_data") as mock_get_data:
+        # To prevent errors, have the mock return a valid structure
+        mock_get_data.return_value = {"name": "mocked"}
+
+        result = enrich_s3_action.execute(event=s3_finding_mixed_buckets)
+
+    assert result["status"] == "success"
+    # Verify the helper was only called for the two standard buckets
+    assert mock_get_data.call_count == 2
+    mock_get_data.assert_has_calls(
+        [call("example-bucket1"), call("example-bucket2")], any_order=True
+    )

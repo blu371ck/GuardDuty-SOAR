@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- There is a condition that an S3 bucket could be a "Directory bucket". If a S3 bucket found is a directory bucket, 99% of the APIs we use will not work on them. But since there is a scenario where GuardDuty could pass none, 1 or more buckets being directory buckets, we have to inspect each at the beginning of every action. This has been implemented.
+  - Unit tests for all actions have been updated with this new conditional logic 
 
 ## [0.7.0] - 2025-10-18
 

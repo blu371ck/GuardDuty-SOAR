@@ -46,6 +46,15 @@ class TagS3BucketAction(BaseAction):
 
         for bucket_data in bucket_details_list:
             try:
+                # We need to check if the S3 bucket is a directory bucket as we
+                # cannot apply tags to the directory bucket with boto3
+                if bucket_data.get("Type") == "S3DirectoryBucket":
+                    logger.warning(
+                        f"Skipping tagging for bucket {bucket_data.get("Name")} because its a directory bucket."
+                    )
+                    # move on to the next bucket
+                    continue
+
                 # Create a validated Pydantic model fo reach bucket in the loop
                 model = S3BucketDetails(**bucket_data, ResourceType="S3Bucket")
                 bucket_name = model.bucket_name

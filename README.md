@@ -36,9 +36,9 @@ This project is developed in stages. Here is a high-level overview of our progre
 | ✅ Live Terraform Testing | ☐ Bug Fixes (Continuous) | ☐ Feature request enhancements |
 | ✅ Documentation Rough |☐ Light Enhancements | ☐ Bug Fixes (Continuous)
 | ☐ S3 Protection Findings |  |  |
-| ☐ EKS Protection Findings |  |  |
 | ☐ RDS Protection Findings |  | |
 | ☐ Lambda Protection Findings |  | |
+| ☐ EKS Protection Findings |  |  |
 | ☐ Malware Protection for EC2 Findings | | |
 | ☐ Malware Protection for S3 Findings | | |
 | ☐ Runtime Monitoring Findings | | |

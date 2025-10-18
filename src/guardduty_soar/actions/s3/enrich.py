@@ -126,6 +126,14 @@ class EnrichS3BucketAction(BaseAction):
 
         for bucket_data in bucket_details_list:
             try:
+                # We need to check each bucket to see if its a directory bucket or not.
+                if bucket_data.get("Type") == "S3DirectoryBucket":
+                    logger.warning(
+                        f"Skipping enrichment for bucket {bucket_data.get("Name")} because it is a directory bucket."
+                    )
+                    # move on to the next bucket
+                    continue
+
                 model = S3BucketDetails(**bucket_data, ResourceType="S3Bucket")
                 bucket_name = model.bucket_name
                 if not bucket_name:
