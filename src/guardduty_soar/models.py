@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, TypedDict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, TypedDict
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2.type_defs import InstanceTypeDef

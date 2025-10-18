@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, cast
 
 import boto3
 from botocore.exceptions import ClientError

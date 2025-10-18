@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import boto3
-
 
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent

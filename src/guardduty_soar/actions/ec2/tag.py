@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, cast
 
 import boto3
 from botocore.exceptions import ClientError
+
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
 from guardduty_soar.models import ActionResponse, GuardDutyEvent
