@@ -4,7 +4,9 @@ from typing import List
 from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
-from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
+from guardduty_soar.playbooks.ec2.instance_compromise import (
+    EC2InstanceCompromisePlaybook,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 @register_playbook(
     "UnauthorizedAccess:EC2/RDPBruteForce", "UnauthorizedAccess:EC2/SSHBruteForce"
 )
-class EC2BruteForcePlaybook(EC2BasePlaybook):
+class EC2BruteForcePlaybook(EC2InstanceCompromisePlaybook):
     """
     A playbook to handle brute force attempts against an EC2 instance on SSH
     or RDP. This particular finding has two scenarios. If the instance reported
@@ -32,9 +34,7 @@ class EC2BruteForcePlaybook(EC2BasePlaybook):
         # The JSON path to ResourceRole: "Service" -> "ResourceRole"
         if event["Service"]["ResourceRole"] == "SOURCE":
             # Our instance is performing the brute force. Assume compromise
-            compromise_workflow_results = self._run_compromise_workflow(
-                event, self.__class__.__name__
-            )
+            compromise_workflow_results = super().run(event)
             action_results = compromise_workflow_results["action_results"]
             enriched_data = compromise_workflow_results["enriched_data"]
             return {"action_results": action_results, "enriched_data": enriched_data}

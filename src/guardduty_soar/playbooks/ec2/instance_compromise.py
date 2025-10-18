@@ -1,6 +1,8 @@
 import logging
+from typing import List
 
-from guardduty_soar.models import GuardDutyEvent, PlaybookResult
+from guardduty_soar.exceptions import PlaybookActionFailedError
+from guardduty_soar.models import ActionResult, GuardDutyEvent, PlaybookResult
 from guardduty_soar.playbook_registry import register_playbook
 from guardduty_soar.playbooks.base.ec2 import EC2BasePlaybook
 
@@ -68,17 +70,86 @@ class EC2InstanceCompromisePlaybook(EC2BasePlaybook):
             f"Executing EC2 Instance Compromise playbook for instance: {event['Resource']['InstanceDetails']['InstanceId']}"
         )
 
-        # Step 1: This playbook always assumes compromise, so it directly calls the
-        # inherited workflow. This is specifically because downstream there are event findings
-        # where the resource could be the "target" or the "actor". Depending on the situation
-        # downstream we want to either run one of two playbooks. Moving that base instance
-        # compromise workflow to the base class allows all classes to inherit it and use
-        # conditional logic to decide based on "actor" or "target" if it should run it or
-        # something else.
-        compromise_workflow_results = self._run_compromise_workflow(
-            event, self.__class__.__name__
-        )
+        results: List[ActionResult] = []
+        enriched_data = None
 
-        action_results = compromise_workflow_results["action_results"]
-        enriched_data = compromise_workflow_results["enriched_data"]
-        return {"action_results": action_results, "enriched_data": enriched_data}
+        # Step 1: Tag the instance with special tags.
+        result = self.tag_instance.execute(event, playbook_name=self.__class__.__name__)
+        if result["status"] == "error":
+            # tagging failed
+            error_details = result["details"]
+            logger.error(f"Action 'tag_instance' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"TagInstanceAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "TagInstance"})
+        logger.info("Successfully tagged instance.")
+
+        # Step 2: Isolate the instance with a quarantined SG. Ideally
+        # the security group should not have any inbound/outbound rules, and
+        # all other security groups previously used by the instance are removed.
+        result = self.isolate_instance.execute(event, config=self.config)
+        if result["status"] == "error":
+            # Isolation failed
+            error_details = result["details"]
+            logger.error(f"Action 'isolate_instance' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"IsolateInstanceAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "IsolateInstance"})
+        logger.info("Successfully isolated instance.")
+
+        # Step 3: Attach a deny all policy to the IAM instance profile associated
+        # with the instance. We check if there is an instance profile, if there
+        # isn't we return success and move on.
+        result = self.quarantine_profile.execute(event, config=self.config)
+        if result["status"] == "error":
+            # Quarantine failed
+            error_details = result["details"]
+            logger.error(f"Action 'quarantine_profile' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"QuarantineInstanceProfileAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "QuarantineInstance"})
+        logger.info("Successfully quarantined instance profile.")
+
+        # Step 4: Create snapshots of all attached EBS volumes. Programmatically
+        # checks for number and if any exists and iterates over them all. As we
+        # do not know if/where any malicious activity could be nested in the
+        # volumes. Appropriate tags are added as part of the call to
+        # create_snapshot boto3 command.
+        result = self.create_snapshots.execute(event, config=self.config)
+        if result["status"] == "error":
+            # Snapshotting failed
+            error_details = result["details"]
+            logger.error(f"Action: 'create_snapshot' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"CreateSnapshotAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "CreateSnapshot"})
+        logger.info("Successfully took snapshot(s) of instances volumes.")
+
+        # Step 5: Enrich the GuardDuty finding event with metadata about the
+        # compromised EC2 instance. This data is then passed through to the end-user
+        # via the notification methods coming up.
+        result = self.enrich_finding.execute(event, config=self.config)
+        if result["status"] == "success":
+            enriched_data = result["details"]
+        results.append({**result, "action_name": "EnrichFinding"})
+        logger.info("Successfully performed enrichment step.")
+
+        # Step 6: Terminate the instance, if user has selected for destructive actions.
+        result = self.terminate_instance.execute(event, config=self.config)
+        if result["status"] == "error":
+            # Termination failed
+            error_details = result["details"]
+            logger.error(f"Action: 'terminate_instance' failed: {error_details}.")
+            raise PlaybookActionFailedError(
+                f"TerminateInstanceAction failed: {error_details}."
+            )
+        results.append({**result, "action_name": "TerminateInstance"})
+        logger.info("Successfully terminated")
+
+        logger.info(f"Playbook execution finished for {self.__class__.__name__}.")
+
+        return {"action_results": results, "enriched_data": enriched_data}
