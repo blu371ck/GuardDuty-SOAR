@@ -770,14 +770,25 @@ def temporary_iam_user():
     finally:
         logger.info(f"Tearing down temporary IAM user {user_name}...")
         if "user_name" in resources:
-            iam_client.delete_user_policy(
-                UserName=user_name, PolicyName=inline_policy_name
-            )
-            iam_client.detach_user_policy(
-                UserName=user_name, PolicyArn=resources["policy_arn"]
-            )
-            iam_client.delete_policy(PolicyArn=resources["policy_arn"])
-            iam_client.delete_user(UserName=user_name)
+            try:
+                attached_policies = iam_client.list_attached_user_policies(
+                    UserName=user_name
+                ).get("AttachedPolicies", [])
+                for policy in attached_policies:
+                    logger.info(
+                        f"Detaching policy {policy['PolicyArn']} from user {user_name}"
+                    )
+                    iam_client.detach_user_policy(
+                        UserName=user_name, PolicyArn=policy["PolicyArn"]
+                    )
+
+                iam_client.delete_user_policy(
+                    UserName=user_name, PolicyName=inline_policy_name
+                )
+                iam_client.delete_policy(PolicyArn=resources["policy_arn"])
+                iam_client.delete_user(UserName=user_name)
+            except ClientError as e:
+                logger.error(f"Error during IAM user cleanup for {user_name}: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -808,7 +819,21 @@ def temporary_iam_role():
     finally:
         logger.info(f"Tearing down temporary IAM role {role_name}...")
         if "role_name" in resources:
-            iam_client.delete_role(RoleName=role_name)
+            try:
+                attached_policies = iam_client.list_attached_role_policies(
+                    RoleName=role_name
+                ).get("AttachedPolicies", [])
+                for policy in attached_policies:
+                    logger.info(
+                        f"Detaching policy {policy['PolicyArn']} from role {role_name}"
+                    )
+                    iam_client.detach_role_policy(
+                        RoleName=role_name, PolicyArn=policy["PolicyArn"]
+                    )
+
+                iam_client.delete_role(RoleName=role_name)
+            except ClientError as e:
+                logger.error(f"Error during IAM role cleanup for {role_name}: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -888,3 +913,39 @@ def finding_with_profile(guardduty_finding_detail):
         "Arn": "arn:aws:iam::123456789012:instance-profile/test-instance-profile"
     }
     return finding
+
+
+@pytest.fixture(scope="function")
+def s3_compromise_e2e_setup(
+    temporary_s3_bucket, temporary_iam_user, e2e_notification_channel
+):
+    """
+    Combines the live resources needed for the S3 Compromise Discovery E2E test,
+    including an S3 bucket, an IAM user, and a notification channel.
+    """
+    return {
+        "bucket_name": temporary_s3_bucket,
+        "user_name": temporary_iam_user["user_name"],
+        **e2e_notification_channel,
+    }
+
+
+@pytest.fixture
+def s3_guardduty_event(s3_finding_detail):
+    """
+    Provides a reusable, valid top-level Lambda event for S3 findings
+    by wrapping the s3_finding_detail fixture.
+    """
+
+    finding_copy = copy.deepcopy(s3_finding_detail)
+    return {
+        "version": "0",
+        "id": "s3-compromise-event-id",
+        "detail-type": "GuardDuty Finding",
+        "source": "aws.guardduty",
+        "account": "1234567891234",
+        "time": "2025-10-17T20:00:00Z",
+        "region": "us-east-1",
+        "resources": [],
+        "detail": finding_copy,
+    }

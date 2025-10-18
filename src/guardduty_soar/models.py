@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Literal, Optional, TypedDict
 
+from mypy_boto3_ec2.type_defs import InstanceTypeDef
+
 
 class Response(TypedDict):
     """
@@ -61,7 +63,7 @@ class EnrichedEC2Finding(TypedDict):
     """
 
     guardduty_finding: GuardDutyEvent
-    instance_metadata: Dict[str, Any]
+    instance_metadata: InstanceTypeDef
 
 
 class EnrichedS3Finding(TypedDict):

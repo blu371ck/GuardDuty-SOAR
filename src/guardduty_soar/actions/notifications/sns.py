@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Union
 
@@ -17,7 +18,7 @@ class SendSNSNotificationAction(BaseNotificationAction):
     are more machine-friendly, and can be linked to other services and functionality
     like SIEM solutions, Jira ticketing, etc.
 
-    :param session: a Boto3 Session object to create clients with.
+    :param session: a Boto3 Session object to make clients with.
     :param config: the Applications configurations.
 
     """
@@ -36,28 +37,66 @@ class SendSNSNotificationAction(BaseNotificationAction):
 
         logger.warning("ACTION: Executing SNS action.")
         try:
-            context = self._build_template_context(**kwargs)
+            # Build the payload as a Python dictionary instead of using a template.
+            finding = kwargs.get("finding", {})
+            resource = kwargs.get("resource")
+            enriched_data = kwargs.get("enriched_data")
             template_type = kwargs.get("template_type", "starting")
 
-            # Render the SNS-specific JSON template
-            message_body = self._render_template(
-                "sns", f"{template_type}.json.j2", context
+            # Start building the payload dictionary
+            payload = {
+                "event_type": (
+                    "playbook_started"
+                    if template_type == "starting"
+                    else "playbook_completed"
+                ),
+                "playbook_name": kwargs.get("playbook_name"),
+                "finding": {
+                    "id": finding.get("Id"),
+                    "type": finding.get("Type"),
+                    "severity": finding.get("Severity"),
+                    "account_id": finding.get("AccountId"),
+                    "region": finding.get("Region"),
+                    "title": finding.get("Title"),
+                },
+            }
+
+            # Add fields that only exist for 'complete' notifications
+            if template_type == "complete":
+                payload.update(
+                    {
+                        "status_emoji": kwargs.get("final_status_emoji"),
+                        "status_message": kwargs.get("final_status_message"),
+                        "actions_summary": kwargs.get("actions_summary", "").replace(
+                            "\n", "; "
+                        ),
+                    }
+                )
+
+            # Add resource and enriched_data using their direct dictionary representations
+            if resource:
+                payload["resource"] = resource.model_dump(mode="json")
+
+            if enriched_data:
+                payload["enriched_data"] = enriched_data
+
+            # Serialize the entire dictionary to a JSON string at the very end.
+            # Use default=str to handle non-serializable types like datetime.
+            message_body = json.dumps(
+                payload, default=str, indent=2, ensure_ascii=False
             )
-            subject = f"GuardDuty-SOAR Event: {context['finding']['Type']}"[:100]
+
+            subject = f"GuardDuty-SOAR Event: {finding.get('Type', 'Unknown')}"[:100]
 
             self.sns_client.publish(
                 TopicArn=self.config.sns_topic_arn,
                 Message=message_body,
                 Subject=subject,
-                MessageStructure="raw",  # We use 'raw' since we are publishing JSON
+                MessageStructure="raw",
             )
             details = "Successfully sent notification via SNS."
             logger.info(details)
             return {"status": "success", "details": details}
-        except ClientError as e:
-            details = f"Failed to publish to SNS: {e}."
-            logger.error(details)
-            return {"status": "error", "details": details}
         except Exception as e:
             details = f"An unexpected error occurred in SNS action: {e}."
             logger.error(details, exc_info=True)

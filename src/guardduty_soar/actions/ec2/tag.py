@@ -1,7 +1,9 @@
 import logging
+from typing import Sequence, cast
 
 import boto3
 from botocore.exceptions import ClientError
+from mypy_boto3_ec2.type_defs import TagTypeDef
 
 from guardduty_soar.actions.base import BaseAction
 from guardduty_soar.config import AppConfig
@@ -30,7 +32,10 @@ class TagInstanceAction(BaseAction):
         logger.warning(f"ACTION: Tagging instance: {instance_id}")
         try:
             self.ec2_client.create_tags(
-                Resources=[instance_id], Tags=self._tags_to_apply(event, playbook_name)
+                Resources=[instance_id],
+                Tags=cast(
+                    Sequence[TagTypeDef], self._tags_to_apply(event, playbook_name)
+                ),
             )
             details = f"Successfully added SOAR tags to instance: {instance_id}."
             logger.info(details)

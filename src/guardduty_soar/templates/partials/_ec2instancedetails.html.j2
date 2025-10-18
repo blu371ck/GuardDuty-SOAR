@@ -1,0 +1,28 @@
+<ul>
+    <li><strong>Resource Type:</strong> <code>{{ resource.resource_type }}</code></li> 
+    <li><strong>Instance ID:</strong> <code>{{ resource.instance_id }}</code></li> 
+    {% if resource.public_ip -%}
+    <li><strong>Public IP:</strong> <code>{{ resource.public_ip }}</code></li> 
+    {% endif -%}
+    {% if resource.vpc_id -%}
+    <li><strong>VPC ID:</strong> <code>{{ resource.vpc_id }}</code></li> 
+    {% endif -%}
+    {% if resource.instance_type -%}
+    <li><strong>Instance Type:</strong> <code>{{ resource.instance_type }}</code></li> 
+    {% endif -%}
+    {% if resource.image_id -%}
+    <li><strong>Image ID:</strong> <code>{{ resource.image_id }}</code></li> 
+    {% endif -%}
+    {% if resource.iam_profile_arn -%}
+    <li><strong>IAM Profile:</strong> <code>{{ resource.iam_profile_arn }}</code></li> 
+    {% endif -%}
+    {% if resource.tags -%}
+    <li><strong>Tags:</strong>
+        <ul>
+        {% for tag in resource.tags -%}
+            <li><code>{{ tag.Key }}:</code> {{ tag.Value }}</li>
+        {% endfor %}
+        </ul>
+    </li>
+    {%- endif %}
+</ul>

@@ -35,7 +35,7 @@ class BaseResourceDetails(BaseModel):
         of needed and useful information.
         """
         # We will override it in the AccessKeyDetails model.
-        return f"partials/_{self.__class__.__name__.lower()}.md.j2"
+        return f"partials/_{self.__class__.__name__.lower()}.html.j2"
 
 
 class IamPrincipalInfo(BaseModel):
@@ -52,8 +52,8 @@ class IamPrincipalInfo(BaseModel):
     @property
     def template_name(self) -> str:
         if "UserId" in self.details:
-            return "partials/_iamuserdetails.md.j2"
-        return "partials/_iamroledetails.md.j2"
+            return "partials/_iamuserdetails.html.j2"
+        return "partials/_iamroledetails.html.j2"
 
 
 class AccessKeyDetails(BaseResourceDetails):
@@ -84,8 +84,8 @@ class AccessKeyDetails(BaseResourceDetails):
         Overrides the base behavior to point to the correct IAM principal template.
         """
         if self.principal_type == "User":
-            return "partials/_iamuserdetails.md.j2"
-        return "partials/_iamroledetails.md.j2"
+            return "partials/_iamuserdetails.html.j2"
+        return "partials/_iamroledetails.html.j2"
 
 
 class EC2InstanceDetails(BaseResourceDetails):
@@ -104,7 +104,7 @@ class EC2InstanceDetails(BaseResourceDetails):
 
     @property
     def template_name(self) -> str:
-        return "partials/_ec2instancedetails.md.j2"
+        return "partials/_ec2instancedetails.html.j2"
 
 
 class S3EnrichmentData(BaseModel):
@@ -145,7 +145,7 @@ class S3BucketDetails(BaseResourceDetails):
 
     @property
     def template_name(self) -> str:
-        return "partials/_s3bucketdetails.md.j2"
+        return "partials/_s3bucketdetails.html.j2"
 
 
 class EKSClusterDetails(BaseResourceDetails):

@@ -8,6 +8,7 @@ import pytest
 from guardduty_soar.actions.iam.analyze import AnalyzePermissionsAction
 from guardduty_soar.actions.iam.details import GetIamPrincipalDetailsAction
 from guardduty_soar.actions.iam.history import GetCloudTrailHistoryAction
+from guardduty_soar.actions.iam.quarantine import QuarantineIamPrincipalAction
 from guardduty_soar.actions.iam.tag import TagIamPrincipalAction
 
 pytestmark = pytest.mark.integration
@@ -25,6 +26,7 @@ def test_get_iam_user_details_integration(temporary_iam_user, real_app_config):
     principal_details_input = {
         "user_type": "IAMUser",
         "user_name": user_name,
+        "principal_arn": f"arn:aws:iam::123456789012:user/{user_name}",
     }
 
     session = boto3.Session()
@@ -49,6 +51,7 @@ def test_get_iam_role_details_integration(temporary_iam_role, real_app_config):
     principal_details_input = {
         "user_type": "AssumedRole",
         "user_name": role_name,  # For roles, user_name is just the role name
+        "principal_arn": f"arn:aws:iam::123456789012:role/{role_name}",
     }
 
     session = boto3.Session()
@@ -289,3 +292,78 @@ def test_tag_skips_root_user_integration(real_app_config):
 
     assert result["status"] == "skipped"
     logger.info("Successfully verified action skips the Root user")
+
+
+def test_quarantine_iam_user_integration(temporary_iam_user, real_app_config):
+    """
+    Tests that the action can successfully attach a deny policy to a live IAM User.
+    """
+    session = boto3.Session()
+    iam_client = session.client("iam")
+    user_name = temporary_iam_user["user_name"]
+
+    # Ensure the action is enabled for this test
+    test_config = dataclasses.replace(real_app_config, allow_iam_quarantine=True)
+    principal_identity = {
+        "user_type": "IAMUser",
+        "user_name": user_name,
+        "principal_arn": f"arn:aws:iam::123456789012:user/{user_name}",
+    }
+
+    # Execute the action
+    action = QuarantineIamPrincipalAction(session, test_config)
+    result = action.execute(event={}, identity=principal_identity)
+    assert result["status"] == "success"
+
+    # Verify the policy was actually attached in AWS
+    response = iam_client.list_attached_user_policies(UserName=user_name)
+    attached_arns = [p["PolicyArn"] for p in response["AttachedPolicies"]]
+    assert test_config.iam_deny_all_policy_arn in attached_arns
+    logger.info(
+        f"Successfully verified quarantine policy was applied to user {user_name}"
+    )
+
+
+def test_quarantine_iam_role_integration(temporary_iam_role, real_app_config):
+    """
+    Tests that the action can successfully attach a deny policy to a live IAM Role.
+    """
+    session = boto3.Session()
+    iam_client = session.client("iam")
+    role_name = temporary_iam_role["role_name"]
+
+    # Ensure the action is enabled for this test
+    test_config = dataclasses.replace(real_app_config, allow_iam_quarantine=True)
+    principal_identity = {
+        "user_type": "AssumedRole",
+        "user_name": role_name,  # For roles, user_name is just the role name
+        "principal_arn": f"arn:aws:iam::123456789012:role/{role_name}",
+    }
+    # Execute the action
+    action = QuarantineIamPrincipalAction(session, test_config)
+    result = action.execute(event={}, identity=principal_identity)
+    assert result["status"] == "success"
+
+    # Verify the policy was actually attached in AWS
+    response = iam_client.list_attached_role_policies(RoleName=role_name)
+    attached_arns = [p["PolicyArn"] for p in response["AttachedPolicies"]]
+    assert test_config.iam_deny_all_policy_arn in attached_arns
+    logger.info(
+        f"Successfully verified quarantine policy was applied to role {role_name}"
+    )
+
+
+def test_quarantine_skipped_when_disabled_integration(real_app_config):
+    """
+    Tests that the action correctly skips execution if disabled in the config.
+    """
+    # Create a copy of the real config and disable the action
+    disabled_config = dataclasses.replace(real_app_config, allow_iam_quarantine=False)
+    session = boto3.Session()
+    principal_identity = {"user_type": "IAMUser", "user_name": "any-user"}
+
+    action = QuarantineIamPrincipalAction(session, disabled_config)
+    result = action.execute(event={}, identity=principal_identity)
+
+    assert result["status"] == "skipped"
+    logger.info("Successfully verified quarantine action is skipped when disabled")

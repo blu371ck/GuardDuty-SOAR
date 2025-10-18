@@ -1,0 +1,42 @@
+<ul>
+    <li><strong>Resource Type:</strong> <code>{{ resource.resource_type }}</code></li> 
+    <li><strong>Bucket Name:</strong> <code>{{ resource.bucket_name }}</code></li> 
+    <li><strong>Bucket ARN:</strong> <code>{{ resource.bucket_arn }}</code></li> 
+</ul>
+
+{%- if enriched_data and enriched_data.s3_bucket_details %}
+{% for bucket in enriched_data.s3_bucket_details %}
+<hr>
+<p><strong>Enriched Details for <code>{{ bucket.name }}</code></strong></p>
+<ul>
+  <li><strong>Versioning:</strong> <code>{{ bucket.versioning | default('Not Configured') }}</code></li> 
+  {% if bucket.tags %}
+  <li><strong>Tags:</strong>
+    <ul>
+    {% for tag in bucket.tags %}
+      <li><code>{{ tag.Key }}:</code> {{ tag.Value }}</li>
+    {% endfor %}
+    </ul>
+  </li>
+  {% endif %}
+  {% if bucket.public_access_block %}
+  <li><strong>Public Access Block:</strong>
+    <ul>
+    {% for key, value in bucket.public_access_block.items() %}
+      <li><code>{{ key }}:</code> {{ value }}</li>
+    {% endfor %}
+    </ul>
+  </li>
+  {% endif %}
+  {% if bucket.encryption %}
+  <li><strong>Server-Side Encryption:</strong>
+    <ul>
+    {% for rule in bucket.encryption.Rules %} 
+      <li><code>Algorithm:</code> {{ rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm }}</li> 
+    {% endfor %}
+    </ul>
+  </li>
+  {% endif %}
+</ul>
+{% endfor %}
+{%- endif %}

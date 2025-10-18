@@ -21,8 +21,6 @@ jmespath==1.0.1
     #   aws-lambda-powertools
     #   boto3
     #   botocore
-markdown==3.9
-    # via guardduty-soar (./pyproject.toml)
 markupsafe==3.0.3
     # via jinja2
 pydantic==2.11.10

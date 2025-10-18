@@ -1,0 +1,14 @@
+Subject: {{ final_status_emoji }} SOAR Playbook Complete: {{ finding.Type }}
+
+<h2>{{ final_status_emoji }} {{ final_status_message }}</h2>
+
+<p>The <strong>{{ playbook_name }}</strong> playbook has finished execution.</p>
+
+<h3>Actions Summary</h3>
+{# We use a <pre> tag here to preserve the newlines from the summary string #}
+<pre>{{ actions_summary }}</pre>
+
+<hr>
+
+<h3>Affected Resource Details</h3>
+{% include resource.template_name with context %}

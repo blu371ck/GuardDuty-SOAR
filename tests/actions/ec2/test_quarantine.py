@@ -36,6 +36,7 @@ def test_quarantine_action_success(finding_with_profile, mock_app_config):
     role_name = "test-ec2-role"
     # The action now uses the hardcoded AWS managed policy ARN
     deny_policy_arn = "arn:aws:iam::aws:policy/AWSDenyAll"
+    mock_app_config.iam_deny_all_policy_arn = deny_policy_arn
 
     # 1. Expect a call to describe_instances
     describe_instances_response = {
@@ -110,6 +111,7 @@ def test_quarantine_fails_on_attach_policy_error(finding_with_profile, mock_app_
     ]["Arn"]
     profile_name = "test-instance-profile"
     role_name = "test-ec2-role"
+    mock_app_config.iam_deny_all_policy_arn = "arn:aws:iam::aws:policy/AWSDenyAll"
 
     # Mock the successful describe and get calls
     ec2_stubber.add_response(
