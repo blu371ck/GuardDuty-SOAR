@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+
+## [0.5.1]
+
+### Added
 - Refactored EC2InstanceCompromisePlaybook to no longer inherit the instance compromise workflow from the base EC2 playbook class. This allows the base EC2 playbook class to model all other base playbook classes. With this refactor, we now have EC2BruteForcePlaybook inherit from EC2InstanceCompromisePlaybook (instead of EC2BasePlaybook), so if the conditional logic points towards the instance being compromised, we can run the EC2InstanceCompromisePlaybook through `super()`. 
 
 
