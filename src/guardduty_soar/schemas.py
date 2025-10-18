@@ -160,13 +160,18 @@ class EKSClusterDetails(BaseResourceDetails):
 
 class RDSInstanceDetails(BaseResourceDetails):
     """
-    A data model for RDS instance details.
+    A data model for RDS DB Instance specific details from a GuardDuty finding.
     """
-
     resource_type: str = Field(..., alias="ResourceType")
     db_instance_identifier: Optional[str] = Field(None, alias="DbInstanceIdentifier")
     db_cluster_identifier: Optional[str] = Field(None, alias="DbClusterIdentifier")
     engine: Optional[str] = Field(None, alias="Engine")
+    engine_version: Optional[str] = Field(None, alias="EngineVersion")
+    tags: Optional[List[Dict[str, str]]] = Field(None, alias="Tags")
+
+    @property
+    def template_name(self) -> str:
+        return "partials/_rdsinstancedetails.html.j2"
 
 
 class LambdaDetails(BaseResourceDetails):
