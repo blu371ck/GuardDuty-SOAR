@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Updated documentation:
+  - Includes S3 playbooks and actions now.
+  - Updated consistent theming across.
 
 
 ## [0.7.2] - 2025-10-18
