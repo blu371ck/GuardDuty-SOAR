@@ -43,3 +43,11 @@ The following is a complete list of the available environment variables and thei
 | ----------------------------------- | -------------------------------- |
 | `GD_CLOUDTRAIL_HISTORY_MAX_RESULTS` | `cloudtrail_history_max_results` |
 | `GD_ANALYZE_IAM_PERMISSIONS`        | `analyze_iam_permissions`        |
+| `GD_IAM_DENY_ALL_POLICY_ARN` | `iam_deny_all_policy_arn` |
+| `GD_ALLOW_IAM_QUARANTINE` | `allow_iam_quarantine` |
+
+### S3
+
+| .env  | gd.cfg |
+| -- | -- |
+| `GD_ALLOW_S3_PUBLIC_BLOCK` | `allow_s3_public_block` |

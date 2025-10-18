@@ -1,142 +1,80 @@
-# 🚀 Preparing GuardDuty-SOAR for Deployment
+# 🚀 Preparing for Deployment
 
-!!! danger "Before you deploy!"
-    Amazon GuardDuty is designed to report on a wide range of potential security risks. However, some of these findings may represent activity that is intentional or acceptable within your specific environment (e.g., an application that performs port scanning, or a web server with a publicly accessible port).
+!!! danger "Before You Deploy: Tune Your Findings"
+    A critical step before deploying to production is to tune the application to your environment.
 
-    To ensure GuardDuty-SOAR only acts on unintended threats, a two-step process is required for tuning:
+    1.  **Create Suppression Rules in GuardDuty**: First, create suppression rules within the AWS GuardDuty service to automatically archive findings that are expected or benign in your environment.
+    2.  **Update `ignored_findings`**: Second, add the same finding types to the `ignored_findings` list in your configuration (`.env` or `gd.cfg`).
 
-    1. **Create Suppression Rules in GuardDuty**: First, you should create suppression rules directly within the AWS GuardDuty service. This tells GuardDuty to automatically archive future findings that match your specific criteria, preventing them from becoming active alerts.
-    2. **Update the** `ignored_findings` **Configuration**: Second, you must add the same finding types that you suppressed in GuardDuty to the `ignored_findings` list in your gd.cfg or .env file. This ensures that GuardDuty-SOAR will not execute a playbook, even if a finding is triggered before a suppression rule takes effect.
-    
-    Both of these steps are essential for a properly tuned deployment that protects your organization from unintended threats without disrupting legitimate operations.
+    This two-step process ensures that GuardDuty-SOAR only acts on unintended threats without disrupting legitimate operations.
 
-### Preparing GuardDuty-SOAR for Deployment
+This guide provides instructions for deploying the GuardDuty-SOAR application as an AWS Lambda function.
 
-This guide provides comprehensive instructions for deploying the GuardDuty-SOAR application as an AWS Lambda function for production use. For details on local development and testing procedures, please refer to the dedicated testing and development documentation.
+---
+## Prerequisites
 
-#### Prerequisites
+* **Local Environment**:
+    * Python 3.13 or newer.
+    * `uv` for environment and package management.
+* **AWS Environment**:
+    * An active AWS account with programmatic access.
+    * AWS GuardDuty enabled in the target region(s).
 
-Before proceeding with the deployment, ensure the following requirements are met.
+---
+## Production Deployment
 
-* Local Environment:
-  * Python 3.13 or newer.
-  * `uv` for environment and package management.
-* AWS Environment:
-  * An active AWS account with programmatic access (credentials configured locally).
-  * AWS GuardDuty enabled in the target region(s).
+The goal of a production deployment is to create a lean `.zip` artifact containing your application's source code and its production dependencies.
 
-#### Installation and Setup
+### Building the Lambda Deployment Package
 
-First, clone the repository and create an isolated virtual environment.
-
-1.  Clone the Repository:
-
-    ```bash
-    git clone https://github.com/your-username/guardduty-soar.git
-    cd guardduty-soar
-    ```
-2.  Create a Virtual Environment:
-
-    ```bash
-    uv venv
-    ```
-
-***
-
-#### Production Deployment
-
-The primary objective for a production deployment is to create a lean `.zip` artifact containing the application source code and its production dependencies, optimized for the AWS Lambda runtime.
-
-**Building the Lambda Deployment Package**
-
-This process isolates production dependencies and packages them with your source code into a single deployment artifact.
-
-**1.  Create a Build Directory: This directory will stage the files for the deployment package.**
+**1. Create a Staging Directory**
+This directory will hold all the files for your deployment package.
 ```bash
-mkdir -p build/dist
+mkdir package
 ```
-
-**2.  Install Production Dependencies: Using the `requirements.txt` lockfile ensures that the exact, tested versions of all dependencies are installed. The `--target` flag directs `uv` to install the packages into a specific directory.**
-```bash
-uv pip install -r requirements.txt --target build/dist/package
+**2. Install Your Project and Dependencies** This command installs your guardduty-soar project as a package, along with all its production dependencies, into the package directory.
+```Bash
+uv pip install . --target ./package
 ```
-
-!!! warning "Important Note on Build Environments"
-    The build process for the AWS Lambda deployment package is architecture-dependent. This is because some project dependencies include compiled code that must match the CPU architecture of the Lambda runtime.
-
-    AWS Lambda offers two architectures:
-    * `x86_64` (for Intel/AMD processors)
-    * `arm64` (for AWS Graviton/Apple Silicon processors)
-
-    The architecture of your build environment must match the architecture you configure for your Lambda function.
-
-    #### For Users on Intel-based Machines (Linux or macOS)
-    You can build the deployment package natively. The resulting artifact will be for the `x86_64` architecture, so you must select `x86_64` when configuring your Lambda function.
-
-    #### For Users on Apple Silicon Macs (M1/M2/M3)
-
-    You have two options:
-
-    1. Build Natively for ARM (**Recommended**): Build the package directly on your Mac. The artifact will be for the `arm64` architecture. You must select `arm64` in your Lambda function's runtime settings.
-    2. Cross-Compile for `x86_64`: To deploy to the `x86_64` architecture, you must use the **Docker** method described below.
-
-    #### For Windows Users
-
-    You cannot build natively for **either** Lambda architecture. Your options are:
-
-    * Use Windows Subsystem for Linux (WSL) to build for `x86_64`.
-    * Use Docker (**recommended**) to build for either architecture.
-
-    #### Universal Solution: Building with Docker
-
-    Using Docker is the most reliable way to build for a specific architecture, regardless of your local machine.
-
-    *   To build for `x86_64` Lambda functions:
-
-      ```powershell
-      docker run --rm -v "${pwd}:/var/task" public.ecr.aws/lambda/python:3.13-x86_64 /bin/sh -c "uv pip install -r requirements.txt --target build/dist/package"
-      ```
-    *   To build for `arm64` Lambda functions:
-
-      ```powershell
-      docker run --rm -v "${pwd}:/var/task" public.ecr.aws/lambda/python:3.13-arm64 /bin/sh -c "uv pip install -r requirements.txt --target build/dist/package"
-      ```
-
-**3. Copy Application Source Code: Copy the `guardduty_soar` application package from the `src` directory into the staging directory alongside the dependencies.**
-
-```bash
-cp -r src/guardduty_soar build/dist/package/
-```
-
-**4. Create the Deployment Package: Navigate into the staging directory and create a `.zip` file containing all its contents.**
-
-```bash
-cd build/dist/package
-zip -r ../lambda_deployment_package.zip .
-cd ../../../
-```
-
-The final artifact, `build/dist/lambda_deployment_package.zip`, is now ready for deployment.
-
-**Deploying to AWS Lambda**
-
-While the deployment package can be uploaded manually via the AWS Console, it is strongly recommended to manage production deployments with an Infrastructure as Code (IaC) tool such as AWS SAM, Terraform, or AWS CloudFormation to ensure repeatable and version-controlled infrastructure.
-
-When configuring the Lambda function, use the following settings:
-
-* **Runtime**: Python 3.13
-* **Handler**: `guardduty_soar.main.handler`
-* **Execution Role (IAM)**: The function requires an IAM Role with permissions to interact with AWS services. Based on the included playbooks, the role will need permissions for services such as (This list will change and grow as the application grows to cover more services/findings):
-  * `iam:*` (e.g., `GetUser`, `TagUser`, `ListAttachedUserPolicies`)
-  * `ec2:*` (e.g., `DescribeInstances`, `CreateSnapshot`)
-  * `cloudtrail:LookupEvents`
-  * `ses:SendEmail`
-  * `sns:Publish`
-  * `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents` (for CloudWatch Logging)
 
 !!! note
-    A full list of current permissions used by the code is listed in the [IAM Permissions](prod_permissions.md) section. This allows you to implement least-privilege permissions. There is also an IAM permissions section for testing, that includes more permissions needed for running the test suites.
+    The previous `cp -r src/guardduty_soar ...` step is no longer needed, as `uv pip install .` handles the source code packaging automatically.
 
-* **Timeout**: Start with a timeout of 90 seconds. This may need to be adjusted based on the complexity of your playbooks and network latency.
-* **Memory**: Start with 256 MB. Increase if your playbooks perform memory-intensive operations.
-* **Trigger**: Configure an Amazon EventBridge (CloudWatch Events) rule to trigger the Lambda function for new "GuardDuty Finding" events.
+**3. Create the Deployment Package** Navigate into the package directory and create a .zip file of its contents.
+
+- On macOS/Linux:
+```Bash
+cd package
+zip -r ../deployment.zip .
+```
+
+- On Windows (PowerShell):
+```powershell
+cd package
+Compress-Archive -Path * -DestinationPath ..\deployment.zip
+```
+
+The final artifact, `deployment.zip`, is now ready to be uploaded to AWS Lambda.
+
+!!! warning "Note on Build Environments & Architectures" 
+    Because some Python dependencies contain compiled code, the architecture of your build environment must match the architecture you select for your Lambda function (`x86_64` or `arm64`). Using Docker is the most reliable cross-platform solution. The command below uses the corrected installation step.
+
+    * To build for `x86_64`:
+      ```bash
+      docker run --rm -v "$(pwd):/var/task" public.ecr.aws/lambda/python:3.13-x86_64 /bin/sh -c "uv pip install . --target ./package"
+      ```
+
+## Deploying to AWS Lambda
+It is strongly recommended to manage production deployments with an Infrastructure as Code (IaC) tool like AWS SAM or Terraform.
+
+**Key Lambda settings**:
+
+- **Runtime**: Python 3.13
+- **Handler**: guardduty_soar.main.handler
+- **Execution Role (IAM)**: An IAM Role with permissions to interact with services like EC2, IAM, S3, CloudTrail, SES, and SNS.
+- **Timeout**: Start with 90 seconds.
+- **Memory**: Start with 256 MB.
+- **Trigger**: An Amazon EventBridge rule configured for "GuardDuty Finding" events.
+
+!!! note 
+    A detailed list of the required permissions is available in the [IAM Permissions](prod_permissions.md) documentation.
