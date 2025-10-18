@@ -113,9 +113,9 @@ class IamForensicsPlaybook(IamBasePlaybook):
             error_details = result["details"]
             logger.error(f"Action 'get_history' failed: {error_details}.")
             raise PlaybookActionFailedError(
-                f"GetIamCloudTrailHistory failed: {error_details}."
+                f"GetCloudTrailHistoryAction failed: {error_details}."
             )
-        results.append({**result, "action_name": "GetIamCloudTrailHistory"})
+        results.append({**result, "action_name": "GetCloudTrailHistory"})
         logger.info("Successfully retrieved CloudTrail history.")
         enriched_data["cloudtrail_history"] = result["details"]
 

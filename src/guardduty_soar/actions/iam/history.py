@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any, Dict, List
 
@@ -53,6 +54,20 @@ class GetCloudTrailHistoryAction(BaseAction):
             )
 
             events = response.get("Events", [])
+
+            for event_item in events:
+                if "CloudTrailEvent" in event_item and isinstance(
+                    event_item["CloudTrailEvent"], str
+                ):
+                    try:
+                        event_item["CloudTrailEvent"] = json.loads(
+                            event_item["CloudTrailEvent"]
+                        )
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            "Could not parse the CloudTrailEvent JSON string in an event."
+                        )
+
             logger.info(f"Successfully found {len(events)} CloudTrail events.")
             return {"status": "success", "details": events}
 
