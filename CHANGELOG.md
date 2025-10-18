@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 
+## [0.8.0] - 2025-10-18
+
+### Added
+- Added RDS finding types for schema.py, models.py and created communication templates for its data.
+
 ## [0.7.3] - 2025-10-18
 
 ### Added
