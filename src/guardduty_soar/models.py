@@ -86,6 +86,7 @@ class EnrichedRDSFinding(TypedDict):
     playbook actions. It holds extra information gathered about the DB instance
     in question, such as security group details and public accessibility.
     """
+
     guardduty_finding: GuardDutyEvent
     rds_details: Dict[str, Any]
 

@@ -53,6 +53,12 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+guardduty_soar = [
+    "templates/**/*",
+    "plugins/**/*.example"
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 markers = [

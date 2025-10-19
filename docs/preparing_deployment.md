@@ -35,6 +35,9 @@ mkdir package
 **2. Install Your Project and Dependencies** This command installs your guardduty-soar project as a package, along with all its production dependencies, into the package directory.
 ```Bash
 uv pip install . --target ./package
+
+# Add your gd.cfg file to the package
+cp gd.cfg package
 ```
 
 !!! note
