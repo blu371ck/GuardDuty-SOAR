@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added `playbooks` directory with subdirectories
+  - Added `actions` directory for custom end-user actions
+  - Added `playbooks` directory for custom end-user playbooks
+- Updated `main.py` to handle the additional lookup of plugins directory.
+- Updated `test_main.py` unit tests to thoroughly test this new functionality.
+- Update documentation for this new functionality.
+- Created unit tests and a validation scenario for this new functionality.
 
 ## [0.8.0] - 2025-10-18
 

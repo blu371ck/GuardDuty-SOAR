@@ -1,0 +1,9 @@
+{
+    "detail": {
+        "AccountId": "1234567891234",
+        "Id": "new-playbook-test-finding",
+        "Type": "Custom:Test/PluginFinding",
+        "Description": "Test event to trigger the new custom playbook.",
+        "Resource": { "ResourceType": "Instance" }
+    }
+}

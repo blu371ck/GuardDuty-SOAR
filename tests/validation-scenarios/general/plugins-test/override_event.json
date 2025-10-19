@@ -1,0 +1,12 @@
+{
+    "detail": {
+        "AccountId": "1234567891234",
+        "Id": "override-test-finding",
+        "Type": "Discovery:S3/AnomalousBehavior",
+        "Description": "Test event to trigger the override playbook.",
+        "Resource": {
+            "ResourceType": "S3Bucket",
+            "S3BucketDetails": [{"Name": "example-bucket"}]
+        }
+    }
+}

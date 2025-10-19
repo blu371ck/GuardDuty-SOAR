@@ -1,0 +1,33 @@
+"""
+This is an example of a custom action. To use it:
+1. Copy this file to a new file ending in .py (e.g., jira_action.py).
+2. The application will automatically discover and load it.
+3. You can then reference it in your custom playbooks.
+"""
+import logging
+from typing import ActionResponse, GuardDutyEvent
+
+from guardduty_soar.actions.base import BaseAction
+
+logger = logging.getLogger(__name__)
+
+
+class MyCustomAction(BaseAction):
+    """
+    A template for creating a new, custom action.
+    This example action just logs a message.
+    """
+    def execute(self, event: GuardDutyEvent, **kwargs) -> ActionResponse:
+        playbook_name = kwargs.get("playbook_name", "UnknownPlaybook")
+        finding_id = event.get("Id", "UnknownId")
+
+        details = (
+            f"MyCustomAction was successfully called by '{playbook_name}' "
+            f"for finding '{finding_id}'!"
+        )
+        logger.info(f"ACTION: {details}")
+
+        # Your action's logic would go here.
+        # For example, you could make an API call to Jira, Slack, etc.
+
+        return {"status": "success", "details": details}

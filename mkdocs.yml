@@ -47,6 +47,7 @@ nav:
     - 'Preparing GuardDuty-SOAR for Testing': 'preparing_testing.md'
     - 'Testing Configuration': 'test_configurations.md'
     - 'Pull Request Checklist': 'pull_request_checklist.md'
+    - 'Extending with Plugins': 'extending_with_plugins.md'
   - 'Concepts':
     - 'Configurations': 'configurations.md'
     - 'Actions': 'actions.md'

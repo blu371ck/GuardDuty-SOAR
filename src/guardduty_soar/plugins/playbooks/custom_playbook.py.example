@@ -1,0 +1,53 @@
+"""
+This is an example of a custom playbook. To use it:
+1. Copy this file to a new file ending in .py (e.g., my_s3_playbook.py).
+2. Uncomment and update the @register_playbook decorator with the
+   GuardDuty finding type(s) you want this playbook to handle.
+3. The application will automatically discover and run this playbook for those findings.
+"""
+import logging
+from typing import ActionResponse, GuardDutyEvent, PlaybookResult
+
+from guardduty_soar.playbook_registry import register_playbook
+from guardduty_soar.playbooks.base.s3 import S3BasePlaybook # Inherit from the relevant base
+
+logger = logging.getLogger(__name__)
+
+
+# To activate this playbook, uncomment the line below and replace the
+# finding type with the one you want to handle. This will override any
+# built-in playbook for the same finding type.
+#
+# @register_playbook("Discovery:S3/AnomalousBehavior")
+class MyCustomPlaybook(S3BasePlaybook):
+    """
+    A template for creating a new, custom playbook. This example playbook
+    orchestrates a simple workflow using built-in actions.
+    """
+    def run(self, event: GuardDutyEvent) -> PlaybookResult:
+        logger.info("Executing MyCustomPlaybook...")
+        
+        # You have access to all actions from the S3BasePlaybook.
+        # For example, let's just tag the bucket and the principal.
+        
+        # Step 1: Tag the S3 bucket
+        tag_bucket_result = self.tag_s3_bucket.execute(event)
+        
+        # Step 2: Identify the IAM principal
+        identity_result = self.identify_principal.execute(event)
+        identity_details = identity_result.get("details", {})
+        
+        # Step 3: Tag the IAM principal
+        tag_principal_result = self.tag_principal.execute(
+            event, principal_identity=identity_details
+        )
+        
+        # Return the results of all actions taken
+        return {
+            "action_results": [
+                {**tag_bucket_result, "action_name": "TagS3Bucket"},
+                {**identity_result, "action_name": "IdentifyIamPrincipal"},
+                {**tag_principal_result, "action_name": "TagIamPrincipal"},
+            ],
+            "enriched_data": {"identity": identity_details}
+        }

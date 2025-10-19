@@ -1,6 +1,9 @@
 import importlib
 import logging
 import os
+import sys
+from pathlib import Path
+from typing import Optional
 
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
@@ -10,48 +13,54 @@ from guardduty_soar.exceptions import PlaybookActionFailedError
 from guardduty_soar.models import LambdaEvent, Response
 
 
-def load_playbooks():
+def load_playbooks(package_dir_override: Optional[Path] = None):
     """
-    This function dynamically finds and imports the various Playbook files. Currently
-    these playbooks are all centrally located in the `playbooks` directory, however,
-    we will eventually be adding the ability for end-users to provide custom
-    playbooks and actions, which will require this function to parse a second
-    location.
+    Dynamically finds and imports modules from the built-in 'playbooks'
+    and 'plugins' directories within the application package.
+
+    :param package_dir_override: Optional path objects, mainly used in unit testing.
     """
-    # Start the search from the 'guardduty_soar' package directory
-    package_dir = os.path.dirname(__file__)
-    playbooks_root = os.path.join(package_dir, "playbooks")
+    logger.info("Loading playbook and action modules...")
 
-    if not os.path.isdir(playbooks_root):
-        logger.critical(
-            f"Playbooks directory not found at '{playbooks_root}'. No playbooks loaded."
-        )
-        return
+    def _discover_and_import(root_path: Path, module_prefix: str):
+        """
+        Walks a directory and imports all found python modules.
 
-    # Walk through the playbooks directory
-    for root, _, files in os.walk(playbooks_root):
-        for filename in files:
-            if filename.endswith(".py") and not filename.startswith("__"):
-                # Construct the full absolute Python import path
-                # e.g., /path/to/src/guardduty_soar/playbooks/ec2/instance_compromise.py
-                full_path = os.path.join(root, filename)
+        :param root_path: Path object representing the root path.
+        :param module_prefix: String representing the modules prefix location.
 
-                # Make the path relative to the 'src' directory's parent
-                # e.g., guardduty_soar/playbooks/ec2/instance_compromise.py
-                rel_path = os.path.relpath(
-                    full_path, os.path.join(package_dir, os.pardir)
-                )
+        :meta private:
+        """
+        if not root_path.is_dir():
+            logger.debug(f"Directory not found, skipping: {root_path}")
+            return
 
-                # Convert file path to Python's dot notation
-                # e.g., guardduty_soar.playbooks.ec2.instance_compromise
-                module_name = os.path.splitext(rel_path.replace(os.sep, "."))[0]
+        for root, _, files in os.walk(root_path):
+            for filename in files:
+                if filename.endswith(".py") and not filename.startswith("__"):
+                    module_name_parts = [module_prefix]
+                    relative_dir = Path(root).relative_to(root_path)
+                    if str(relative_dir) != ".":
+                        module_name_parts.extend(relative_dir.parts)
+                    module_name_parts.append(Path(filename).stem)
 
-                try:
-                    importlib.import_module(module_name)
-                except ImportError as e:
-                    logger.error(
-                        f"Failed to import playbook module {module_name}: {e}."
-                    )
+                    module_name = ".".join(module_name_parts)
+                    try:
+                        importlib.import_module(module_name)
+                        logger.debug(f"Successfully imported module: {module_name}")
+                    except ImportError as e:
+                        logger.error(f"Failed to import module {module_name}: {e}")
+
+    # Use the override if provided for testing, otherwise calculate the real path
+    package_dir = package_dir_override or Path(__file__).parent
+
+    # 1. Load built-in playbooks
+    _discover_and_import(package_dir / "playbooks", "guardduty_soar.playbooks")
+
+    # 2. Load custom plugins
+    plugins_dir = package_dir / "plugins"
+    _discover_and_import(plugins_dir / "actions", "guardduty_soar.plugins.actions")
+    _discover_and_import(plugins_dir / "playbooks", "guardduty_soar.plugins.playbooks")
 
     logger.info("Playbook modules loaded and registered.")
 

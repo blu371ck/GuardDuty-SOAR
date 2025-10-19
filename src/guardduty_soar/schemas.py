@@ -162,6 +162,7 @@ class RDSInstanceDetails(BaseResourceDetails):
     """
     A data model for RDS DB Instance specific details from a GuardDuty finding.
     """
+
     resource_type: str = Field(..., alias="ResourceType")
     db_instance_identifier: Optional[str] = Field(None, alias="DbInstanceIdentifier")
     db_cluster_identifier: Optional[str] = Field(None, alias="DbClusterIdentifier")
