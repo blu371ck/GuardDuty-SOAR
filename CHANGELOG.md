@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+## [0.9.0] - 2025-10-19
+
+### Added
 - Added `playbooks` directory with subdirectories
   - Added `actions` directory for custom end-user actions
   - Added `playbooks` directory for custom end-user playbooks
