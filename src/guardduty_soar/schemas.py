@@ -158,6 +158,20 @@ class EKSClusterDetails(BaseResourceDetails):
     cluster_arn: Optional[str] = Field(None, alias="Arn")
 
 
+class RdsEnrichmentData(BaseModel):
+    """
+    A data model containing enriched details for an RDS DB instance, gathered
+    from various API calls.
+    """
+
+    db_instance_identifier: str
+    instance_details: Optional[Dict[str, Any]] = None
+    cluster_details: Optional[Dict[str, Any]] = None
+    security_groups: Optional[List[Dict[str, Any]]] = None
+    tags: Optional[List[Dict[str, str]]] = None
+    recent_events: Optional[List[Dict[str, Any]]] = None
+
+
 class RdsDbUserDetails(BaseModel):
     """
     A data model for RDS user details from a GuardDuty finding.
