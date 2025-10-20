@@ -3,32 +3,54 @@
     {% if resource.db_instance_identifier -%}
     <li><strong>DB Instance Identifier:</strong> <code>{{ resource.db_instance_identifier }}</code></li>
     {% endif -%}
-    {% if resource.db_cluster_identifier -%}
-    <li><strong>DB Cluster Identifier:</strong> <code>{{ resource.db_cluster_identifier }}</code></li>
-    {% endif -%}
     {% if resource.engine -%}
     <li><strong>Engine:</strong> <code>{{ resource.engine }}</code></li>
     {% endif -%}
+    {% if resource.db_user_details %}
+    <li><strong>Database User Details:</strong>
+        <ul>
+            <li><strong>User:</strong> <code>{{ resource.db_user_details.user }}</code></li>
+            <li><strong>Auth Method:</strong> <code>{{ resource.db_user_details.auth_method }}</code></li>
+        </ul>
+    </li>
+    {% endif %}
 </ul>
 
+{# --- Enriched RDS Details --- #}
 {%- if enriched_data and enriched_data.rds_details %}
 <hr>
-<p><strong>Enriched Details for <code>{{ resource.db_instance_identifier or resource.db_cluster_identifier }}</code></strong></p>
+<p><strong>Enriched Instance Details</strong></p>
 <ul>
   {% if enriched_data.rds_details.PubliclyAccessible is not none %}
   <li><strong>Publicly Accessible:</strong> <code>{{ enriched_data.rds_details.PubliclyAccessible }}</code></li>
-  {% endif %}
-  {% if enriched_data.rds_details.MultiAZ is not none %}
-  <li><strong>Multi-AZ:</strong> <code>{{ enriched_data.rds_details.MultiAZ }}</code></li>
   {% endif %}
   {% if enriched_data.rds_details.VpcSecurityGroups %}
   <li><strong>VPC Security Groups:</strong>
     <ul>
     {% for sg in enriched_data.rds_details.VpcSecurityGroups %}
-      <li><code>{{ sg.VpcSecurityGroupId }}</code> (Status: {{ sg.Status }})</li>
+      <li><code>{{ sg.VpcSecurityGroupId }}</code></li>
     {% endfor %}
     </ul>
   </li>
   {% endif %}
+</ul>
+{%- endif %}
+
+{# --- Associated IAM Principal Details (if found) --- #}
+{%- if enriched_data and enriched_data.identity %}
+<hr>
+<h4>Associated IAM Principal</h4>
+{% include 'partials/_iamuserdetails.html.j2' with context %}
+{%- endif %}
+
+{# --- Recent Query History (if found) --- #}
+{%- if enriched_data and enriched_data.query_history %}
+<hr>
+<h3>📜 Recent Database Queries</h3>
+<p>A summary of recent queries found in the audit logs for this user:</p>
+<ul>
+  {%- for result in enriched_data.query_history %}
+    <li><code>{{ result[0].value }}</code> | {{ result[1].value }}</li>
+  {%- endfor %}
 </ul>
 {%- endif %}

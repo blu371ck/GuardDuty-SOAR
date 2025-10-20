@@ -11,6 +11,7 @@ This project is not just a script; it's a production-ready framework designed fo
 
 * **Serverless and Cost-Effective**: Built entirely on AWS Lambda, ensuring you only pay for what you use with zero idle costs.
 * **Dynamic Playbook Engine**: A powerful, decorator-based registry allows you to add new remediation playbooks for any GuardDuty finding type without modifying the core engine.
-* **Reusable Action Library**: Playbooks are composed of small, single-purpose **Actions** (e.g., `IsolateInstance`, `TagResource`), promoting clean, reusable code.
+* **Extensible via Plugins**: Add your own custom **Actions** and **Playbooks** to integrate with third-party tools (like Jira or Slack) or to override default remediation workflows. See the [Extending with Plugins](extending_with_plugins.md) guide for details.
+* **Reusable Action Library**: Playbooks are composed of small, single-purpose **Actions** (e.g., `IsolateInstance`, `TagResource`) promoting clean, reusable code.
 * **Layered & Decoupled Architecture**: A clean inheritance pattern separates orchestration (Playbooks) from implementation (Actions).
 * **Comprehensive Testing Suite**: Includes a multi-layered testing strategy with isolated unit tests, integration tests against live AWS services, and full E2E validation scenarios.

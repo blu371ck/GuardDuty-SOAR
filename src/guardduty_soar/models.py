@@ -89,6 +89,12 @@ class EnrichedRDSFinding(TypedDict):
 
     guardduty_finding: GuardDutyEvent
     rds_details: Dict[str, Any]
+    identity: Optional[Dict[str, Any]]
+    attached_policies: Optional[List[Dict[str, Any]]]
+    inline_policies: Optional[Dict[str, Any]]
+    permissions_analysis: Optional[Dict[str, Any]]
+    cloudtrail_history: Optional[List[Dict[str, Any]]]
+    query_history: Optional[List[Dict[str, Any]]]
 
 
 class ActionResponse(TypedDict):

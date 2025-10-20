@@ -33,7 +33,7 @@ class TagInstanceAction(BaseAction):
         instance_id = event["Resource"]["InstanceDetails"]["InstanceId"]
         playbook_name = kwargs.get("playbook_name", "UnknownPlaybook")
 
-        logger.warning(f"ACTION: Tagging instance: {instance_id}")
+        logger.warning(f"ACTION: Tagging instance: {instance_id}.")
         try:
             # We specifically have to enclose Sequence[TagTypeDef] in double-quotes because
             # this value is not covered by future's annotations, as its not evaluated till

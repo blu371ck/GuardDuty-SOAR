@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added new RDS action: TagRdsInstanceAction, which can tag one or more RDS instances from findings with GuardDuty-SOAR finding tags.
+  - Added unit tests and integration tests.
 
 ## [0.9.0] - 2025-10-19
 
