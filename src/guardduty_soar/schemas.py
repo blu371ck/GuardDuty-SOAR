@@ -158,6 +158,18 @@ class EKSClusterDetails(BaseResourceDetails):
     cluster_arn: Optional[str] = Field(None, alias="Arn")
 
 
+class RdsDbUserDetails(BaseModel):
+    """
+    A data model for RDS user details from a GuardDuty finding.
+    """
+
+    user: Optional[str] = Field(None, alias="User")
+    application: Optional[str] = Field(None, alias="Application")
+    database: Optional[str] = Field(None, alias="Database")
+    ssl_version: Optional[str] = Field(None, alias="SSLVersion")
+    auth_method: Optional[str] = Field(None, alias="AuthMethod")
+
+
 class RDSInstanceDetails(BaseResourceDetails):
     """
     A data model for RDS DB Instance specific details from a GuardDuty finding.
@@ -169,6 +181,7 @@ class RDSInstanceDetails(BaseResourceDetails):
     engine: Optional[str] = Field(None, alias="Engine")
     engine_version: Optional[str] = Field(None, alias="EngineVersion")
     tags: Optional[List[Dict[str, str]]] = Field(None, alias="Tags")
+    db_user_details: Optional[RdsDbUserDetails] = Field(None, alias="DbUserDetails")
 
     @property
     def template_name(self) -> str:

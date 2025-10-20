@@ -972,3 +972,215 @@ def s3_finding_mixed_buckets(s3_finding_detail):
         {"Arn": "arn:aws:s3:::example-bucket2", "Name": "example-bucket2"}
     )
     return finding
+
+
+@pytest.fixture
+def rds_finding_detail():
+    """Provides a base GuardDuty finding for an RDS instance."""
+    return {
+        "AccountId": "1234567891234",
+        "Region": "us-east-1",
+        "Id": "rds-finding-id",
+        "Type": "CredentialAccess:RDS/AnomalousBehavior.SuccessfulLogin",
+        "Severity": 5.0,
+        "Resource": {
+            "ResourceType": "DBInstance",
+            "RdsDbInstanceDetails": [
+                {
+                    "DbInstanceIdentifier": "test-db-instance-1",
+                    "Engine": "mysql",
+                }
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def rds_finding_multiple_instances(rds_finding_detail):
+    """Creates a copy of the RDS finding with two instances."""
+    finding = copy.deepcopy(rds_finding_detail)
+    finding["Resource"]["RdsDbInstanceDetails"].append(
+        {
+            "DbInstanceIdentifier": "test-db-instance-2",
+            "Engine": "postgres",
+        }
+    )
+    return finding
+
+
+@pytest.fixture(scope="function")
+def temporary_vpc():
+    """
+    Creates a temporary, isolated VPC with two public subnets in different AZs,
+    an Internet Gateway, and a public route table for integration tests.
+    """
+    ec2_client = boto3.client("ec2")
+    resources = {}
+    try:
+        logger.info("Setting up temporary VPC with public subnets and IGW...")
+        vpc_res = ec2_client.create_vpc(CidrBlock="10.100.0.0/16")
+        vpc_id = vpc_res["Vpc"]["VpcId"]
+        ec2_client.modify_vpc_attribute(
+            VpcId=vpc_id, EnableDnsHostnames={"Value": True}
+        )
+        ec2_client.modify_vpc_attribute(VpcId=vpc_id, EnableDnsSupport={"Value": True})
+        resources["vpc_id"] = vpc_id
+
+        # Create and attach an Internet Gateway
+        igw_res = ec2_client.create_internet_gateway()
+        igw_id = igw_res["InternetGateway"]["InternetGatewayId"]
+        resources["igw_id"] = igw_id
+        ec2_client.attach_internet_gateway(VpcId=vpc_id, InternetGatewayId=igw_id)
+
+        # Create a public route table
+        route_table_res = ec2_client.create_route_table(VpcId=vpc_id)
+        route_table_id = route_table_res["RouteTable"]["RouteTableId"]
+        resources["route_table_id"] = route_table_id
+        ec2_client.create_route(
+            RouteTableId=route_table_id,
+            DestinationCidrBlock="0.0.0.0/0",
+            GatewayId=igw_id,
+        )
+
+        az_response = ec2_client.describe_availability_zones()
+        available_azs = [az["ZoneName"] for az in az_response["AvailabilityZones"]]
+
+        subnet_a_res = ec2_client.create_subnet(
+            VpcId=vpc_id, CidrBlock="10.100.1.0/24", AvailabilityZone=available_azs[0]
+        )
+        subnet_a_id = subnet_a_res["Subnet"]["SubnetId"]
+        resources["subnet_a_id"] = subnet_a_id
+        ec2_client.associate_route_table(
+            SubnetId=subnet_a_id, RouteTableId=route_table_id
+        )
+
+        subnet_b_res = ec2_client.create_subnet(
+            VpcId=vpc_id, CidrBlock="10.100.2.0/24", AvailabilityZone=available_azs[1]
+        )
+        subnet_b_id = subnet_b_res["Subnet"]["SubnetId"]
+        resources["subnet_b_id"] = subnet_b_id
+        ec2_client.associate_route_table(
+            SubnetId=subnet_b_id, RouteTableId=route_table_id
+        )
+
+        resources["subnet_ids"] = [subnet_a_id, subnet_b_id]
+
+        # Also modify the subnets to auto-assign public IPs
+        ec2_client.modify_subnet_attribute(
+            SubnetId=subnet_a_id, MapPublicIpOnLaunch={"Value": True}
+        )
+        ec2_client.modify_subnet_attribute(
+            SubnetId=subnet_b_id, MapPublicIpOnLaunch={"Value": True}
+        )
+
+        yield resources
+
+    finally:
+        logger.info("Tearing down temporary VPC...")
+        if "route_table_id" in resources:
+            try:
+                #  Find and disassociate the route table from subnets before deletion
+                rt_response = ec2_client.describe_route_tables(
+                    RouteTableIds=[resources["route_table_id"]]
+                )
+                for association in rt_response["RouteTables"][0].get(
+                    "Associations", []
+                ):
+                    # Don't try to disassociate the main (implicit) association
+                    if not association.get("Main"):
+                        ec2_client.disassociate_route_table(
+                            AssociationId=association["RouteTableAssociationId"]
+                        )
+
+                ec2_client.delete_route_table(RouteTableId=resources["route_table_id"])
+            except ClientError as e:
+                logger.error(f"Error deleting route table: {e}")
+        if "igw_id" in resources:
+            ec2_client.detach_internet_gateway(
+                VpcId=resources["vpc_id"], InternetGatewayId=resources["igw_id"]
+            )
+            ec2_client.delete_internet_gateway(InternetGatewayId=resources["igw_id"])
+        if "subnet_a_id" in resources:
+            ec2_client.delete_subnet(SubnetId=resources["subnet_a_id"])
+        if "subnet_b_id" in resources:
+            ec2_client.delete_subnet(SubnetId=resources["subnet_b_id"])
+        if "vpc_id" in resources:
+            ec2_client.delete_vpc(VpcId=resources["vpc_id"])
+
+
+@pytest.fixture(scope="function")
+def temporary_rds_instance(temporary_vpc):
+    """
+    Creates a temporary, publicly accessible RDS DB instance (MySQL) in an
+    isolated VPC for integration testing. This is a slow fixture.
+    """
+    rds_client = boto3.client("rds")
+    db_instance_id = f"gd-soar-test-db-{generate_random_suffix()}"
+    subnet_group_name = f"gd-soar-test-sng-{generate_random_suffix()}"
+    master_password = f"SOAR-test-pw-{generate_random_suffix(12)}"
+    resources = {}
+
+    try:
+        logger.info(f"Setting up temporary RDS instance {db_instance_id}...")
+
+        #  Create the DB Subnet Group using BOTH subnets from the test VPC.
+        rds_client.create_db_subnet_group(
+            DBSubnetGroupName=subnet_group_name,
+            DBSubnetGroupDescription="Temporary subnet group for SOAR integration tests",
+            SubnetIds=temporary_vpc["subnet_ids"],  # Use the list of subnets
+        )
+        resources["subnet_group_name"] = subnet_group_name
+
+        # Create the DB instance using the new multi-AZ subnet group
+        rds_client.create_db_instance(
+            DBInstanceIdentifier=db_instance_id,
+            DBInstanceClass="db.t3.micro",
+            Engine="mysql",
+            AllocatedStorage=20,
+            MasterUsername="soar_admin",
+            MasterUserPassword=master_password,
+            DBSubnetGroupName=subnet_group_name,
+            PubliclyAccessible=True,
+        )
+
+        waiter = rds_client.get_waiter("db_instance_available")
+        waiter.wait(
+            DBInstanceIdentifier=db_instance_id,
+            WaiterConfig={"Delay": 30, "MaxAttempts": 60},
+        )
+
+        resources["db_instance_identifier"] = db_instance_id
+        logger.info(f"Temporary RDS instance {db_instance_id} is available.")
+        yield resources
+
+    finally:
+        logger.info(f"Tearing down temporary RDS instance {db_instance_id}...")
+        if "db_instance_identifier" in resources:
+            try:
+                rds_client.delete_db_instance(
+                    DBInstanceIdentifier=db_instance_id,
+                    SkipFinalSnapshot=True,
+                    DeleteAutomatedBackups=True,
+                )
+                waiter = rds_client.get_waiter("db_instance_deleted")
+                waiter.wait(
+                    DBInstanceIdentifier=db_instance_id,
+                    WaiterConfig={"Delay": 30, "MaxAttempts": 60},
+                )
+                logger.info(f"Successfully deleted RDS instance {db_instance_id}.")
+            except ClientError as e:
+                logger.error(
+                    f"Failed to delete RDS instance {db_instance_id}. Error: {e}"
+                )
+
+        # Clean up the DB Subnet Group after the instance is deleted
+        if "subnet_group_name" in resources:
+            try:
+                rds_client.delete_db_subnet_group(DBSubnetGroupName=subnet_group_name)
+                logger.info(
+                    f"Successfully deleted DB Subnet Group {subnet_group_name}."
+                )
+            except ClientError as e:
+                logger.error(
+                    f"Failed to clean up DB Subnet Group {subnet_group_name}. Manual cleanup may be required. Error: {e}"
+                )
