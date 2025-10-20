@@ -35,6 +35,7 @@ class AppConfig:
     allow_s3_public_block: bool
     allow_iam_quarantine: bool
     iam_deny_all_policy_arn: str
+    allow_revoke_public_access_rds: bool
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -133,4 +134,9 @@ def get_config() -> AppConfig:
             fallback="arn:aws:iam::aws:policy/AWSDenyAll",
         )
         or "arn:aws:iam::aws:policy/AWSDenyAll",
+        allow_revoke_public_access_rds=os.environ.get(
+            "GD_ALLOW_REVOKE_PUBLIC_ACCESS_RDS"
+        )
+        is not None
+        or config.getboolean("Rds", "allow_revoke_public_access_rds", fallback=False),
     )
