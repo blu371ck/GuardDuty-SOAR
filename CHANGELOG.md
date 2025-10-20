@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added new ModifyRdsPublicAccessAction, which attempts to remove public access from an RDS instance
+  - Added unit tests and integration tests.
+- Added configuration, as this new action is optional and can be turned off/on.
 
 ## [0.11.0] - 2025-10-20
 
