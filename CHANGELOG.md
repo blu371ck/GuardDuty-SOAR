@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
+
+
+## [0.13.0] - 2025-10-22
+
+### Added
 - Added new IdentifyRdsUserAction
   - Added unit tests and integration tests.
 - Added updated Rds user schema model
