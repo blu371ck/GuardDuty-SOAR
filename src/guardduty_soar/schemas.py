@@ -184,6 +184,21 @@ class RdsDbUserDetails(BaseModel):
     auth_method: Optional[str] = Field(None, alias="AuthMethod")
 
 
+class RdsIdentifiedUserData(BaseModel):
+    """
+    A data model representing the output of the IdentifyRdsUserAction.
+    It contains the original DB user details and any correlated IAM identity.
+    """
+
+    db_user_details: RdsDbUserDetails
+    identity_type: str = Field(
+        ..., description="The type of identity (e.g., 'DatabaseUser', 'IAMIdentity')"
+    )
+    iam_identity_name: Optional[str] = Field(
+        None, description="The name of the IAM user or role, if correlated."
+    )
+
+
 class RDSInstanceDetails(BaseResourceDetails):
     """
     A data model for RDS DB Instance specific details from a GuardDuty finding.

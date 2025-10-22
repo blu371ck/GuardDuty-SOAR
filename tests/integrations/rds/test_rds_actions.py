@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import logging
 import time
@@ -7,6 +8,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.rds.enrich import EnrichRdsFindingAction
+from guardduty_soar.actions.rds.identify import IdentifyRdsUserAction
 from guardduty_soar.actions.rds.modify import ModifyRdsPublicAccessAction
 from guardduty_soar.actions.rds.tag import TagRdsInstanceAction
 
@@ -22,6 +24,7 @@ def test_rds_actions_integration(
     1. Tests TagRdsInstanceAction.
     2. Tests EnrichRdsFindingAction.
     3. Tests ModifyRdsPublicAccessAction.
+    4. Tests IdentifyRdsUserAction.
     """
     session = boto3.Session()
     rds_client = session.client("rds")
@@ -29,7 +32,9 @@ def test_rds_actions_integration(
     db_instance_id = temporary_rds_instance["db_instance_identifier"]
     account_id = sts_client.get_caller_identity()["Account"]
 
-    test_finding = rds_finding_detail.copy()
+    # This is the base finding we'll modify for each test
+    # Use deepcopy to prevent nested mutations
+    test_finding = copy.deepcopy(rds_finding_detail)
     test_finding["Resource"]["RdsDbInstanceDetails"][0][
         "DbInstanceIdentifier"
     ] = db_instance_id
@@ -118,3 +123,41 @@ def test_rds_actions_integration(
         public_access_revoked
     ), "Test timed out waiting for public access to be revoked."
     logger.info("PHASE 3: Successfully verified public access was revoked.")
+
+    # --- 4. TEST IDENTIFY USER ACTION ---
+    logger.info(f"PHASE 4: Testing IdentifyRdsUserAction on {db_instance_id}...")
+    identify_action = IdentifyRdsUserAction(session, real_app_config)
+
+    # --- 4a: Test with standard DB user ---
+    logger.info("PHASE 4a: Testing IdentifyRdsUserAction (Standard DB User)...")
+    # We modify a deepcopy of the finding to include the user details
+    test_finding_with_db_user = copy.deepcopy(test_finding)  # <-- Use deepcopy
+    test_finding_with_db_user["Resource"]["RdsDbInstanceDetails"][0][
+        "DbUserDetails"
+    ] = {"User": "admin_user", "AuthMethod": "Password"}
+    identify_result_db = identify_action.execute(event=test_finding_with_db_user)
+    assert identify_result_db["status"] == "success"
+    assert len(identify_result_db["details"]) == 1
+    assert identify_result_db["details"][0]["identity_type"] == "DatabaseUser"
+    assert identify_result_db["details"][0].get("iam_identity_name") is None
+
+    # --- 4b: Test with IAM user ---
+    logger.info("PHASE 4b: Testing IdentifyRdsUserAction (IAM User)...")
+    test_finding_with_iam_user = copy.deepcopy(test_finding)  # <-- Use deepcopy
+    test_finding_with_iam_user["Resource"]["RdsDbInstanceDetails"][0][
+        "DbUserDetails"
+    ] = {"User": "iam-database-user", "AuthMethod": "IAM"}
+    identify_result_iam = identify_action.execute(event=test_finding_with_iam_user)
+    assert identify_result_iam["status"] == "success"
+    assert len(identify_result_iam["details"]) == 1
+    assert identify_result_iam["details"][0]["identity_type"] == "IAMIdentity"
+    assert identify_result_iam["details"][0]["iam_identity_name"] == "iam-database-user"
+
+    # --- 4c: Test with no user details ---
+    logger.info("PHASE 4c: Testing IdentifyRdsUserAction (No User Details)...")
+    # The original 'test_finding' object should be clean and have no DbUserDetails
+    # because the other phases used deepcopies.
+    identify_result_none = identify_action.execute(event=test_finding)
+    assert identify_result_none["status"] == "success"
+    assert len(identify_result_none["details"]) == 0
+    logger.info("PHASE 4: Successfully verified IdentifyRdsUserAction.")
