@@ -36,6 +36,7 @@ class AppConfig:
     allow_iam_quarantine: bool
     iam_deny_all_policy_arn: str
     allow_revoke_public_access_rds: bool
+    allow_gather_recent_queries: bool
     # Add other config attributes here as they come up (Don't forget to add them below as well)
 
 
@@ -139,4 +140,7 @@ def get_config() -> AppConfig:
         )
         is not None
         or config.getboolean("Rds", "allow_revoke_public_access_rds", fallback=False),
+        allow_gather_recent_queries=os.environ.get("GD_ALLOW_GATHER_RECENT_QUERIES")
+        is not None
+        or config.getboolean("Rds", "allow_gather_recent_queries", fallback=False),
     )

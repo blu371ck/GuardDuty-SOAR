@@ -184,6 +184,17 @@ class RdsDbUserDetails(BaseModel):
     auth_method: Optional[str] = Field(None, alias="AuthMethod")
 
 
+class RecentRdsQuery(BaseModel):
+    """
+    A data model for a single query event retrieved from CloudWatch logs.
+    """
+
+    db_instance_identifier: str
+    db_user: str
+    timestamp: str
+    query: str
+
+
 class RdsIdentifiedUserData(BaseModel):
     """
     A data model representing the output of the IdentifyRdsUserAction.

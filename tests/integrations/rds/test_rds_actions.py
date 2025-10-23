@@ -8,6 +8,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from guardduty_soar.actions.rds.enrich import EnrichRdsFindingAction
+from guardduty_soar.actions.rds.gather import GatherRecentQueriesAction
 from guardduty_soar.actions.rds.identify import IdentifyRdsUserAction
 from guardduty_soar.actions.rds.modify import ModifyRdsPublicAccessAction
 from guardduty_soar.actions.rds.tag import TagRdsInstanceAction
@@ -161,3 +162,25 @@ def test_rds_actions_integration(
     assert identify_result_none["status"] == "success"
     assert len(identify_result_none["details"]) == 0
     logger.info("PHASE 4: Successfully verified IdentifyRdsUserAction.")
+
+    # --- 5. TEST GATHER RECENT QUERIES ACTION ---
+    logger.info(f"PHASE 5: Testing GatherRecentQueriesAction on {db_instance_id}...")
+
+    # Create a config that enables the action
+    queries_config = dataclasses.replace(
+        real_app_config, allow_gather_recent_queries=True
+    )
+    gather_action = GatherRecentQueriesAction(session, queries_config)
+
+    # We use the finding from 4a, which has a DB user defined
+    gather_result = gather_action.execute(event=test_finding_with_db_user)
+
+    # We expect a "success" status, but an empty list of queries,
+    # because the temporary RDS instance does not have audit logging
+    # configured to send to CloudWatch. This validates that the
+    # action runs and handles the "Log group not found" scenario gracefully.
+    assert gather_result["status"] == "success"
+    assert len(gather_result["details"]) == 0
+    logger.info(
+        "PHASE 5: Successfully verified query gathering (no logs found, as expected)."
+    )

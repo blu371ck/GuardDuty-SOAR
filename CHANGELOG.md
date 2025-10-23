@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 ### Added
-
+- Added new configuration "allow_gather_recent_queries" that when enabled allows the playbook to capture recent queries ran by a user from a GuardDuty RDS finding. This action is optional but also requires the RDS instance be setup with logging enabled for that engine.
+- Added new action GatherRecentQueriesAction
+  - Added unit tests and integration tests.
 
 ## [0.13.0] - 2025-10-22
 
